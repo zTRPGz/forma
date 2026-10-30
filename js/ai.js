@@ -85,14 +85,59 @@
     return value;
   }
 
+  function relaxJson(text) {
+    let inString = false;
+    let escaped = false;
+    let out = "";
+    for (const ch of text) {
+      if (inString) {
+        if (escaped) {
+          out += ch;
+          escaped = false;
+          continue;
+        }
+        if (ch === "\\") {
+          out += ch;
+          escaped = true;
+          continue;
+        }
+        if (ch === '"') {
+          out += ch;
+          inString = false;
+          continue;
+        }
+        if (ch === "\n") {
+          out += "\\n";
+          continue;
+        }
+        if (ch === "\r") continue;
+        if (ch === "\t") {
+          out += "\\t";
+          continue;
+        }
+        out += ch;
+        continue;
+      }
+      if (ch === '"') inString = true;
+      out += ch;
+    }
+    return out.replace(/,\s*([}\]])/g, "$1");
+  }
+
   function parseContent(content) {
     const text = String(content || "").trim();
     if (!text) return null;
+    const cleaned = stripFences(text);
     try {
-      const parsed = JSON.parse(stripFences(text));
+      const parsed = JSON.parse(cleaned);
       return parsed && typeof parsed === "object" ? parsed : null;
     } catch (error) {
-      return null;
+      try {
+        const parsed = JSON.parse(relaxJson(cleaned));
+        return parsed && typeof parsed === "object" ? parsed : null;
+      } catch (relaxError) {
+        return null;
+      }
     }
   }
 
@@ -250,6 +295,33 @@
           controller.signal
         );
         parsed = parseContent(repair.content);
+      }
+
+      if (!parsed) {
+        const retryMessages = messages.concat([
+          {
+            role: "user",
+            content:
+              "Ответ не разобрался как JSON. Собери документ заново и верни строго один JSON-объект по схеме из первого сообщения. Никакого текста, пояснений и markdown до или после JSON.",
+          },
+        ]);
+        const retry = await complete(
+          settings,
+          retryMessages,
+          { json: jsonMode, temperature: 0.3, maxTokens: MAX_TOKENS },
+          controller.signal
+        );
+        parsed = parseContent(retry.content);
+
+        if (!parsed) {
+          const repair = await complete(
+            settings,
+            messages.concat([{ role: "user", content: repairPrompt(retry) }]),
+            { json: jsonMode, temperature: 0.2, maxTokens: REPAIR_TOKENS },
+            controller.signal
+          );
+          parsed = parseContent(repair.content);
+        }
       }
 
       if (!parsed) {
