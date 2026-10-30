@@ -147,23 +147,25 @@
     return blocks;
   }
 
-  function paginate(blocks, limit) {
+  function paginate(blocks, limit, firstLimit) {
     const pages = [];
     let current = [];
     let used = 0;
+    let capacity = firstLimit || limit;
 
     function flush() {
       if (current.length) pages.push(current);
       current = [];
       used = 0;
+      capacity = limit;
     }
 
     blocks.forEach(function (block, index) {
       const next = blocks[index + 1];
       const nextHeight = next ? Math.min(next.height, 120) : 0;
       if (used > 0) {
-        const orphansHeading = block.heading && used + block.height + nextHeight > limit;
-        if (orphansHeading || used + block.height > limit) flush();
+        const orphansHeading = block.heading && used + block.height + nextHeight > capacity;
+        if (orphansHeading || used + block.height > capacity) flush();
       }
       current.push(block);
       used += block.height;
@@ -205,6 +207,55 @@
     const innerWidth = DOC.width - DOC.padX * 2;
     paginate(docBlocks(doc, innerWidth), DOC.bodyLimit).forEach(function (blocks, index) {
       const page = docPage(index + 2, false);
+      blocks.forEach(function (item) {
+        page.body.append(item.make());
+      });
+      root.append(page.page);
+    });
+
+    return root;
+  }
+
+  // ---------- PDF ----------
+
+  function pdfPage(pageNumber) {
+    const page = node("div", "doc-page pdf-page");
+    const head = node("div", "doc-page-head");
+    head.append(node("span", "doc-page-brand", "FORMA"));
+    head.append(node("span", "doc-page-label", " · аналитическая записка"));
+
+    const body = node("div", "doc-page-body");
+    page.append(head, body, node("div", "doc-page-foot", String(pageNumber)));
+    return { page: page, body: body };
+  }
+
+  function pdf(doc) {
+    const root = node("div", "doc-preview pdf-preview");
+    const innerWidth = DOC.width - DOC.padX * 2;
+    const meta = metaLine(doc);
+    const titleHeight =
+      lineCount(doc.title, 26) * 33 + (doc.subtitle ? 28 : 0) + (meta ? 56 : 20);
+    const pages = paginate(
+      docBlocks(doc, innerWidth),
+      DOC.bodyLimit,
+      Math.max(240, DOC.bodyLimit - titleHeight)
+    );
+
+    const first = pdfPage(1);
+    first.page.classList.add("pdf-page--first");
+    const block = node("div", "doc-title-block");
+    block.append(node("p", "doc-title", doc.title));
+    if (doc.subtitle) block.append(node("p", "doc-subtitle", doc.subtitle));
+    if (meta) block.append(node("p", "doc-meta", meta));
+    block.append(node("div", "pdf-rule"));
+    first.body.append(block);
+    (pages[0] || []).forEach(function (item) {
+      first.body.append(item.make());
+    });
+    root.append(first.page);
+
+    pages.slice(1).forEach(function (blocks, index) {
+      const page = pdfPage(index + 2);
       blocks.forEach(function (item) {
         page.body.append(item.make());
       });
@@ -361,6 +412,7 @@
   Object.assign(Forma, {
     preview: {
       docx: docx,
+      pdf: pdf,
       pptx: pptx,
     },
   });

@@ -598,14 +598,6 @@ textarea:focus {
   border-radius: 12px;
 }
 
-.preview iframe {
-  display: block;
-  width: 100%;
-  height: 540px;
-  background: #fff;
-  border: 0;
-}
-
 .preview--docx,
 .preview--pptx {
   display: flex;
@@ -775,6 +767,54 @@ textarea:focus {
 
 .doc-table tbody tr:nth-child(even) {
   background: #f3ede4;
+}
+
+/* --- макет PDF (A4) --- */
+
+.pdf-page--first {
+  padding-top: 44px;
+}
+
+.pdf-page .doc-title {
+  font-family: var(--sans);
+  font-size: 27px;
+  line-height: 1.2;
+}
+
+.pdf-page .doc-subtitle {
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.pdf-page .doc-meta {
+  margin-top: 26px;
+  margin-bottom: 14px;
+}
+
+.pdf-rule {
+  height: 2px;
+  background: var(--accent);
+}
+
+.pdf-page .doc-heading {
+  margin: 20px 0 10px;
+  padding: 0;
+  font-family: var(--sans);
+  font-size: 17px;
+  border-bottom: 0;
+}
+
+.pdf-page .doc-heading::after {
+  content: "";
+  display: block;
+  width: 32%;
+  height: 2px;
+  margin-top: 6px;
+  background: var(--accent);
+}
+
+.pdf-page .doc-text {
+  font-size: 12.5px;
 }
 
 /* --- макет PowerPoint (16:9) --- */
@@ -999,10 +1039,6 @@ textarea:focus {
 
   .preview {
     min-height: 320px;
-  }
-
-  .preview iframe {
-    height: 420px;
   }
 }
 

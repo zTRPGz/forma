@@ -313,23 +313,15 @@
     preview.className = "preview preview--" + format;
     preview.replaceChildren();
 
-    if (format === "pdf") {
-      const frame = document.createElement("iframe");
-      frame.src = url;
-      frame.title = "Предпросмотр PDF";
-      preview.append(frame);
-    } else {
-      const caption = document.createElement("p");
-      caption.className = "preview-caption";
-      caption.textContent =
-        "Макет " + NAMES[format] + " · точная вёрстка — в скачанном файле";
+    const caption = document.createElement("p");
+    caption.className = "preview-caption";
+    caption.textContent = "Макет " + NAMES[format] + " · точная вёрстка — в скачанном файле";
 
-      const scroll = document.createElement("div");
-      scroll.className = "preview-scroll";
-      scroll.append(Forma.preview[format](doc));
+    const scroll = document.createElement("div");
+    scroll.className = "preview-scroll";
+    scroll.append(Forma.preview[format](doc));
 
-      preview.append(caption, scroll);
-    }
+    preview.append(caption, scroll);
 
     result.hidden = false;
     result.scrollIntoView({ block: "start" });
