@@ -2309,6 +2309,126 @@ textarea:focus {
   background: var(--pv-alt, #f3ede4);
 }
 
+/* ---------- почему тезис ---------- */
+
+.why {
+  position: relative;
+  margin-top: 22px;
+  padding: 34px 34px 30px;
+  overflow: hidden;
+  color: #f6f1e8;
+  background:
+    radial-gradient(640px 340px at 94% 0%, rgba(194, 65, 12, 0.34), transparent 68%),
+    linear-gradient(158deg, #172a41 0%, var(--navy) 58%, #0b1420 100%);
+  border: 1px solid rgba(255, 253, 249, 0.08);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+}
+
+.why::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #e06a2d, #d97706 45%, rgba(255, 253, 249, 0.22));
+}
+
+.why-head {
+  position: relative;
+  max-width: 660px;
+  margin-bottom: 26px;
+}
+
+.why-kicker {
+  margin: 0 0 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #f0a983;
+}
+
+.why-title {
+  margin: 0 0 10px;
+  font-family: var(--serif);
+  font-size: clamp(25px, 3.4vw, 34px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+}
+
+.why-lead {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: rgba(246, 241, 232, 0.72);
+}
+
+.why-table {
+  position: relative;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.why-table th,
+.why-table td {
+  padding: 13px 16px;
+  text-align: left;
+  vertical-align: top;
+  border-top: 1px solid rgba(246, 241, 232, 0.12);
+}
+
+.why-table thead th {
+  padding-top: 0;
+  padding-bottom: 11px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(246, 241, 232, 0.48);
+  border-top: 0;
+}
+
+.why-table tbody th {
+  width: 132px;
+  font-weight: 600;
+  color: #f6f1e8;
+}
+
+.why-table th:first-child,
+.why-table td:first-child {
+  padding-left: 0;
+}
+
+.why-table th:last-child,
+.why-table td:last-child {
+  padding-right: 0;
+}
+
+.why-table tbody td:not(.why-good) {
+  width: 37%;
+  color: rgba(246, 241, 232, 0.5);
+}
+
+.why-good {
+  font-weight: 500;
+  color: #f6f1e8;
+}
+
+.why-note {
+  position: relative;
+  margin: 22px 0 0;
+  padding-top: 16px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(246, 241, 232, 0.6);
+  border-top: 1px solid rgba(246, 241, 232, 0.12);
+}
+
 /* ---------- подвал ---------- */
 
 .foot {
@@ -2575,6 +2695,76 @@ textarea:focus {
   .doc-preview,
   .slides-preview {
     gap: 12px;
+  }
+
+  .why {
+    margin-top: 18px;
+    padding: 26px 20px 22px;
+    border-radius: 18px;
+  }
+
+  .why-head {
+    margin-bottom: 20px;
+  }
+
+  .why-table thead {
+    display: none;
+  }
+
+  .why-table,
+  .why-table tbody,
+  .why-table tr,
+  .why-table th,
+  .why-table td {
+    display: block;
+    width: auto;
+  }
+
+  .why-table tr {
+    padding: 14px 0;
+    border-top: 1px solid rgba(246, 241, 232, 0.12);
+  }
+
+  .why-table tr:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .why-table th,
+  .why-table td {
+    padding: 0;
+    border: 0;
+  }
+
+  .why-table tbody th {
+    width: auto;
+    margin-bottom: 7px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 400;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #f0a983;
+  }
+
+  .why-table tbody td + td {
+    margin-top: 8px;
+  }
+
+  .why-table tbody td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(246, 241, 232, 0.4);
+  }
+
+  .why-table tbody td:not(.why-good) {
+    width: auto;
+    color: rgba(246, 241, 232, 0.5);
   }
 
   .foot {
