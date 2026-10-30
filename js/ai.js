@@ -123,11 +123,11 @@
     const cleaned = stripFences(text);
     try {
       const parsed = JSON.parse(cleaned);
-      return parsed && typeof parsed === "object" ? parsed : null;
+      return parsed && typeof parsed === "object" ? pairSplitSections(parsed) : null;
     } catch (error) {
       try {
         const parsed = JSON.parse(relaxJson(cleaned));
-        return parsed && typeof parsed === "object" ? parsed : null;
+        return parsed && typeof parsed === "object" ? pairSplitSections(parsed) : null;
       } catch (relaxError) {
         return null;
       }
@@ -136,6 +136,58 @@
 
   function asText(value) {
     return Forma.textOf ? Forma.textOf(value) : String(value == null ? "" : value);
+  }
+
+  function hasBody(section) {
+    if (!section || typeof section !== "object") return false;
+    const paragraphs = Array.isArray(section.paragraphs) ? section.paragraphs : [];
+    const bullets = Array.isArray(section.bullets) ? section.bullets : [];
+    return (
+      paragraphs.some(function (part) {
+        return asText(part).trim();
+      }) ||
+      bullets.some(function (part) {
+        return asText(part).trim();
+      }) ||
+      Boolean(section.table && Array.isArray(section.table.headers) && section.table.headers.length)
+    );
+  }
+
+  // GigaChat sometimes splits a section into {"heading":"…"} followed by a heading-less
+  // {"paragraphs":[…],"bullets":[…]}; pair them so the section survives normalization.
+  function pairSplitSections(value) {
+    if (!value || !Array.isArray(value.sections)) return value;
+    const sections = [];
+    let pending = "";
+
+    function flush() {
+      if (!pending) return;
+      sections.push({ heading: pending, paragraphs: [], bullets: [], table: null });
+      pending = "";
+    }
+
+    value.sections.forEach(function (item) {
+      if (!item || typeof item !== "object") return;
+      const heading = String(item.heading || "").trim();
+      if (!heading) {
+        if (pending && hasBody(item)) {
+          sections.push({
+            heading: pending,
+            paragraphs: Array.isArray(item.paragraphs) ? item.paragraphs : [],
+            bullets: Array.isArray(item.bullets) ? item.bullets : [],
+            table: item.table || null,
+          });
+          pending = "";
+        }
+        return;
+      }
+      flush();
+      if (hasBody(item)) sections.push(item);
+      else pending = heading;
+    });
+    flush();
+    value.sections = sections;
+    return value;
   }
 
   function documentWeight(doc) {
@@ -227,8 +279,18 @@
     return "Содержания слишком мало: нужно 4–6 разделов с конкретикой — действиями, сроками, ответственными и рисками. В каждом разделе 1–3 абзаца по 400–700 знаков. Расширь документ и верни полный JSON по схеме из первого сообщения, без пояснений.";
   }
 
+  function cleanSections(doc) {
+    if (doc && Array.isArray(doc.sections)) {
+      doc.sections = doc.sections.filter(function (item) {
+        return item && String(item.heading || "").trim() && hasBody(item);
+      });
+    }
+    return doc;
+  }
+
   function sectionCount(value) {
-    return value && Array.isArray(value.sections) ? value.sections.length : 0;
+    if (!value || !Array.isArray(value.sections)) return 0;
+    return value.sections.length;
   }
 
   function usableSections(value) {
@@ -240,11 +302,12 @@
 
   async function topUpSections(doc, options, messages, jsonMode, signal) {
     const target = Math.max(1, (options && options.slides ? options.slides : 6) - 1);
+    cleanSections(doc);
     if (sectionCount(doc) >= target) return doc;
     if (!Array.isArray(doc.sections)) doc.sections = [];
 
-    for (let attempt = 0; attempt < 2 && doc.sections.length < target; attempt += 1) {
-      const missing = target - doc.sections.length;
+    for (let attempt = 0; attempt < 2 && sectionCount(doc) < target; attempt += 1) {
+      const missing = target - sectionCount(doc);
       const existing = doc.sections
         .map(function (item) {
           return String((item && item.heading) || "").trim();
@@ -269,21 +332,21 @@
         { json: jsonMode, temperature: 0.5, maxTokens: 1600 },
         signal
       );
-      const fresh = usableSections(parseContent(answer.content));
-      if (!fresh.length) continue;
+      const fresh = cleanSections(parseContent(answer.content));
+      if (!fresh || !fresh.sections || !fresh.sections.length) continue;
 
       const seen = new Set(
         existing.map(function (heading) {
           return heading.toLowerCase();
         })
       );
-      fresh.forEach(function (item) {
+      fresh.sections.forEach(function (item) {
+        if (sectionCount(doc) >= target) return;
         const heading = String(item.heading || "").trim();
         if (!heading || seen.has(heading.toLowerCase())) return;
         seen.add(heading.toLowerCase());
         doc.sections.push(item);
       });
-      if (doc.sections.length > target) doc.sections.length = target;
     }
 
     return doc;
@@ -552,7 +615,17 @@
         const deck = await buildDeck(topic, options, controller.signal).catch(function () {
           return null;
         });
-        if (deck) return deck;
+        if (deck) {
+          const target = options.slides - 1;
+          cleanSections(deck);
+          if (sectionCount(deck) >= target) return deck;
+          const topped = await topUpSections(deck, options, messages, true, controller.signal).catch(
+            function () {
+              return deck;
+            }
+          );
+          if (sectionCount(topped) >= target) return topped;
+        }
       }
 
       let answer;
@@ -607,15 +680,18 @@
         throw error;
       }
 
+      cleanSections(parsed);
+
       if (isThin(parsed, format, options)) {
         const expanded = await complete(
           messages.concat([{ role: "user", content: expansionPrompt(format, options) }]),
           { json: jsonMode, temperature: 0.4, maxTokens: budget },
           controller.signal
         );
-        const fuller = parseContent(expanded.content);
+        const fuller = cleanSections(parseContent(expanded.content));
         if (
           fuller &&
+          fuller.sections &&
           (sectionCount(fuller) > sectionCount(parsed) || !isThin(fuller, format, options))
         ) {
           parsed = fuller;
@@ -624,6 +700,11 @@
 
       if (format === "pptx" && options && options.slides) {
         parsed = await topUpSections(parsed, options, messages, jsonMode, controller.signal);
+        if (sectionCount(parsed) < options.slides - 1) {
+          const error = new Error("ИИ вернул меньше разделов, чем нужно для выбранного числа слайдов.");
+          error.code = "short-deck";
+          throw error;
+        }
       }
 
       return parsed;
