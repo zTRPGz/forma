@@ -13,6 +13,10 @@ const API_PATH = "/api/v1/chat/completions";
 const SCOPE = process.env.GIGACHAT_SCOPE || "GIGACHAT_API_PERS";
 const MODEL = "GigaChat-2";
 const MAX_TOKENS = 4096;
+const MAX_MESSAGES = 8;
+const MAX_MESSAGE_CHARS = 8000;
+const MAX_TOTAL_CHARS = 24000;
+const ROLES = { system: true, user: true, assistant: true };
 
 const CERT_DIR = path.join(__dirname, "certs");
 const TRUSTED_CA = ["russian_trusted_root_ca_pem.crt", "russian_trusted_sub_ca_pem.crt"]
@@ -143,22 +147,57 @@ async function callChat(payload) {
   return response;
 }
 
-function normalizePayload(input) {
-  const source = input && typeof input === "object" ? input : {};
-  const messages = Array.isArray(source.messages) ? source.messages : null;
-  if (!messages || !messages.length) {
+function clampNumber(value, fallback, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, number));
+}
+
+function checkMessages(messages) {
+  if (!Array.isArray(messages) || !messages.length) {
     return { error: "В запросе нет messages." };
   }
+  if (messages.length > MAX_MESSAGES) {
+    return { error: "Слишком много сообщений в запросе." };
+  }
+
+  const result = [];
+  let total = 0;
+  for (let index = 0; index < messages.length; index += 1) {
+    const message = messages[index];
+    if (!message || typeof message !== "object" || !ROLES[message.role] || typeof message.content !== "string") {
+      return { error: "Сообщение " + (index + 1) + " некорректно." };
+    }
+    const content = message.content.trim();
+    if (!content) {
+      return { error: "Сообщение " + (index + 1) + " пустое." };
+    }
+    if (content.length > MAX_MESSAGE_CHARS) {
+      return { error: "Сообщение " + (index + 1) + " длиннее " + MAX_MESSAGE_CHARS + " знаков." };
+    }
+    total += content.length;
+    if (total > MAX_TOTAL_CHARS) {
+      return { error: "Запрос длиннее " + MAX_TOTAL_CHARS + " знаков." };
+    }
+    result.push({ role: message.role, content: content });
+  }
+  return { messages: result };
+}
+
+function normalizePayload(input) {
+  const source = input && typeof input === "object" ? input : {};
+  const checked = checkMessages(source.messages);
+  if (checked.error) return { error: checked.error };
 
   const payload = {
     model: MODEL,
-    messages: messages,
-    temperature: Math.min(2, Math.max(0, Number(source.temperature) || 0.7)),
-    max_tokens: Math.min(MAX_TOKENS, Math.max(1, Number(source.max_tokens) || MAX_TOKENS)),
+    messages: checked.messages,
+    temperature: clampNumber(source.temperature, 0.7, 0, 2),
+    max_tokens: Math.floor(clampNumber(source.max_tokens, MAX_TOKENS, 1, MAX_TOKENS)),
   };
 
-  if (source.response_format && source.response_format.type) {
-    payload.response_format = source.response_format;
+  if (source.response_format && source.response_format.type === "json_object") {
+    payload.response_format = { type: "json_object" };
   }
   return { payload: payload };
 }

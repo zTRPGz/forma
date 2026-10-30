@@ -5,7 +5,6 @@
   const REMOTE_API = "https://forma-docs.duckdns.org";
   const REMOTE_HOST = "forma-docs.duckdns.org";
   const MAX_TOKENS = 4096;
-  const REPAIR_TOKENS = 5000;
   const TIMEOUT_MS = 90000;
 
   const FORMAT_NAMES = { docx: "Word-документ", pdf: "PDF-записка", pptx: "презентация" };
@@ -658,7 +657,7 @@
       if (!parsed) {
         const repair = await complete(
           messages.concat([{ role: "user", content: repairPrompt(answer) }]),
-          { json: jsonMode, temperature: 0.2, maxTokens: REPAIR_TOKENS },
+          { json: jsonMode, temperature: 0.2, maxTokens: MAX_TOKENS },
           controller.signal
         );
         parsed = parseContent(repair.content);
@@ -682,7 +681,7 @@
         if (!parsed) {
           const repair = await complete(
             messages.concat([{ role: "user", content: repairPrompt(retry) }]),
-            { json: jsonMode, temperature: 0.2, maxTokens: REPAIR_TOKENS },
+            { json: jsonMode, temperature: 0.2, maxTokens: MAX_TOKENS },
             controller.signal
           );
           parsed = parseContent(repair.content);
@@ -771,11 +770,12 @@
       } else {
         reason = (error && error.message) || "Не удалось получить ответ ИИ.";
       }
+      const retry = /попробуйте/i.test(reason) ? "" : " Попробуйте сгенерировать ещё раз.";
       return {
         doc: demoDoc,
         provider: "демо-режим",
         model: "",
-        note: reason + " Показан демонстрационный документ — попробуйте сгенерировать ещё раз.",
+        note: reason + " Показан демонстрационный документ." + retry,
       };
     }
   }

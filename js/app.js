@@ -157,6 +157,7 @@
       const active = Number(button.dataset.slides) === slides;
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-checked", String(active));
+      button.tabIndex = active ? 0 : -1;
     });
     slidesRow.hidden = format !== "pptx";
   }
@@ -376,16 +377,43 @@
     selectFormat(formatButtons[nextIndex].dataset.format, true);
   });
 
+  function selectSlides(next, moveFocus) {
+    if (!next || next === slides) return;
+    slides = next;
+    applySlidesUI();
+    storeSlides();
+    hideResult();
+    setStatus("");
+    if (moveFocus) {
+      const button = slideButtons.find(function (item) {
+        return Number(item.dataset.slides) === slides;
+      });
+      if (button) button.focus();
+    }
+  }
+
   slideButtons.forEach(function (button) {
     button.addEventListener("click", function () {
-      const next = Number(button.dataset.slides);
-      if (!next || next === slides) return;
-      slides = next;
-      applySlidesUI();
-      storeSlides();
-      hideResult();
-      setStatus("");
+      selectSlides(Number(button.dataset.slides), false);
     });
+  });
+
+  slidesEl.addEventListener("keydown", function (event) {
+    const keys = ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "Home", "End"];
+    if (keys.indexOf(event.key) < 0) return;
+    const index = slideButtons.indexOf(document.activeElement);
+    if (index < 0) return;
+
+    event.preventDefault();
+    let nextIndex;
+    if (event.key === "Home") nextIndex = 0;
+    else if (event.key === "End") nextIndex = slideButtons.length - 1;
+    else if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      nextIndex = (index + 1) % slideButtons.length;
+    } else {
+      nextIndex = (index - 1 + slideButtons.length) % slideButtons.length;
+    }
+    selectSlides(Number(slideButtons[nextIndex].dataset.slides), true);
   });
 
   if (templateFile) {
@@ -437,6 +465,12 @@
     hideResult();
     setStatus("GigaChat пишет содержание…");
 
+    const slowHint = setTimeout(function () {
+      if (format === "pptx" && slides >= 12) {
+        setStatus("Собираю большую презентацию — обычно это занимает до 40 секунд.");
+      }
+    }, 10000);
+
     const depsReady = Forma.deps.ensure(format).then(
       function () {
         return null;
@@ -461,6 +495,7 @@
         throw new Error("модуль вёрстки не загрузился — проверьте, что папка vendor загружена полностью, и обновите страницу.");
       }
 
+      clearTimeout(slowHint);
       setStatus("Собираю файл…");
       const blob = await Forma.renderers[format](generated.doc);
       const file = new Blob([blob], { type: MIME[format] });
@@ -474,7 +509,7 @@
       renderResult(generated, url, filename, seconds);
       if (generated.note) {
         setBadge("demo", generated.note);
-        setStatus("Демо-документ готов — ИИ не ответил.");
+        setStatus("Демо-документ готов — можно попробовать ещё раз.");
       } else {
         setBadge("live");
         setStatus("Файл готов.");
@@ -485,6 +520,7 @@
         true
       );
     } finally {
+      clearTimeout(slowHint);
       setBusy(false);
     }
   }

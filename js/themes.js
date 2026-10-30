@@ -305,7 +305,6 @@
       resolve: resolve,
       fromTemplate: fromTemplate,
       blend: blend,
-      luminance: luminance,
     },
   });
 })(typeof window !== "undefined" ? window : globalThis);
