@@ -4,6 +4,7 @@ Thumbs.db
 .env
 .env.*
 output/
+proxy/gigachat-key.txt
 .venv/
 __pycache__/
 *.pyc

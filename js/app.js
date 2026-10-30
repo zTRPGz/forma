@@ -38,6 +38,7 @@
   const keyToggle = document.getElementById("keyToggle");
   const saveSettingsButton = document.getElementById("saveSettings");
   const clearSettingsButton = document.getElementById("clearSettings");
+  const gigaPresetButton = document.getElementById("gigaPreset");
 
   let format = "docx";
   let busy = false;
@@ -265,6 +266,12 @@
     applySettings(true);
   });
   clearSettingsButton.addEventListener("click", clearSettings);
+  gigaPresetButton.addEventListener("click", function () {
+    baseUrlInput.value = "http://127.0.0.1:8787/v1";
+    modelInput.value = "GigaChat-2";
+    if (!apiKeyInput.value.trim()) apiKeyInput.value = "local";
+    setStatus("Адрес и модель GigaChat подставлены. Запустите proxy/start-gigachat.bat, затем нажмите «Сохранить».");
+  });
 
   keyToggle.addEventListener("click", function () {
     const revealed = apiKeyInput.type === "text";
