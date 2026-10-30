@@ -19,8 +19,7 @@
     <header class="topbar">
       <div class="brand"><span class="brand-mark" aria-hidden="true"></span>FORMA</div>
       <div class="topbar-tools">
-        <span id="llm-badge" class="badge">демо-режим</span>
-        <button type="button" class="settings-toggle" id="settingsToggle" aria-expanded="false" aria-controls="settings">Настройки</button>
+        <span id="llm-badge" class="badge">ИИ · GigaChat-2</span>
       </div>
     </header>
 
@@ -32,33 +31,6 @@
       </section>
 
       <section class="panel">
-        <details id="settings" class="settings">
-          <summary>Подключение ИИ <span id="settingsModel">gpt-4o-mini</span></summary>
-          <div class="settings-grid">
-            <label class="field field--compact">
-              <span>Адрес API</span>
-              <input id="baseUrl" type="url" spellcheck="false" autocomplete="off" placeholder="https://api.openai.com/v1">
-            </label>
-            <label class="field field--compact">
-              <span>Модель</span>
-              <input id="model" type="text" spellcheck="false" autocomplete="off" placeholder="gpt-4o-mini">
-            </label>
-            <div class="field field--compact field--wide">
-              <label class="field-label" for="apiKey">API-ключ</label>
-              <div class="key-row">
-                <input id="apiKey" type="password" spellcheck="false" autocomplete="new-password" placeholder="sk-…" aria-describedby="settingsNote">
-                <button type="button" class="ghost key-toggle" id="keyToggle" aria-pressed="false">Показать</button>
-              </div>
-            </div>
-          </div>
-          <div class="settings-actions">
-            <button type="button" class="small-cta" id="saveSettings">Сохранить</button>
-            <button type="button" class="ghost" id="clearSettings">Забыть ключ</button>
-            <button type="button" class="ghost" id="gigaPreset">GigaChat через прокси</button>
-            <p class="settings-note" id="settingsNote">Ключ хранится только в localStorage этого браузера и уходит напрямую в API. Не вписывайте его в файлы репозитория. Если OpenAI недоступен из вашего региона, укажите прокси в «Адресе API».</p>
-          </div>
-        </details>
-
         <div class="formats" role="radiogroup" aria-label="Формат документа">
           <button type="button" class="format is-active" data-format="docx" role="radio" aria-checked="true">
             <span class="format-icon" aria-hidden="true">
@@ -125,8 +97,8 @@
     </main>
 
     <footer class="foot">
-      <span>Содержание собирает ИИ, вёрстку задаёт FORMA. Файлы создаются в браузере.</span>
-      <span class="foot-sep">Ключ не покидает localStorage</span>
+      <span>Содержание собирает GigaChat, вёрстку задаёт FORMA. Файлы создаются в браузере.</span>
+      <span class="foot-sep">Работает на телефоне и компьютере</span>
     </footer>
   </div>
 

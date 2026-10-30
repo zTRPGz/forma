@@ -1,0 +1,7 @@
+proxy/
+dist/
+.netlify/
+node_modules/
+output/
+.env
+.env.*

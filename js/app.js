@@ -28,18 +28,6 @@
   const formatsEl = document.querySelector(".formats");
   const formatButtons = Array.prototype.slice.call(document.querySelectorAll(".format"));
 
-  const settings = document.getElementById("settings");
-  const settingsToggle = document.getElementById("settingsToggle");
-  const settingsNote = document.getElementById("settingsNote");
-  const settingsModel = document.getElementById("settingsModel");
-  const baseUrlInput = document.getElementById("baseUrl");
-  const modelInput = document.getElementById("model");
-  const apiKeyInput = document.getElementById("apiKey");
-  const keyToggle = document.getElementById("keyToggle");
-  const saveSettingsButton = document.getElementById("saveSettings");
-  const clearSettingsButton = document.getElementById("clearSettings");
-  const gigaPresetButton = document.getElementById("gigaPreset");
-
   let format = "docx";
   let busy = false;
   let lastUrl = null;
@@ -73,91 +61,10 @@
     }
   }
 
-  function updateBadge(config) {
-    const current = config || Forma.ai.load();
-    settingsModel.textContent = current.model;
-    if (current.apiKey) {
-      badge.textContent = "ИИ · " + current.model;
-      badge.title = "Ключ сохранён в этом браузере. Модель: " + current.model;
-      badge.classList.add("badge--live");
-    } else {
-      badge.textContent = "демо-режим";
-      badge.title = "Ключ не задан — документы собираются из демонстрационного текста.";
-      badge.classList.remove("badge--live");
-    }
-  }
-
-  function fillSettings() {
-    const config = Forma.ai.load();
-    baseUrlInput.value = config.baseUrl;
-    modelInput.value = config.model;
-    apiKeyInput.value = config.apiKey;
-    updateBadge(config);
-  }
-
-  function normaliseApiUrl(value) {
-    const raw = String(value || "").trim().replace(/\/+$/, "");
-    if (!raw) return { value: Forma.ai.DEFAULTS.baseUrl };
-
-    let url;
-    try {
-      url = new URL(raw);
-    } catch (error) {
-      return { error: "Адрес API выглядит некорректно. Пример: https://api.openai.com/v1" };
-    }
-
-    if (url.protocol !== "https:" && url.protocol !== "http:") {
-      return { error: "Адрес API должен начинаться с https://" };
-    }
-
-    const local = /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(url.hostname);
-    if (location.protocol === "https:" && url.protocol === "http:" && !local) {
-      return { error: "Сайт открыт по https, а API — по http: браузер заблокирует запрос. Укажите https-адрес." };
-    }
-
-    let path = url.pathname.replace(/\/+$/, "").replace(/\/chat\/completions$/i, "");
-    if (path === "/") path = "";
-    return { value: url.origin + path };
-  }
-
-  function applySettings(announce) {
-    const address = normaliseApiUrl(baseUrlInput.value);
-    if (address.error) {
-      setStatus(address.error, true);
-      baseUrlInput.focus();
-      return null;
-    }
-
-    const saved = Forma.ai.save({
-      baseUrl: address.value,
-      model: modelInput.value.trim() || Forma.ai.DEFAULTS.model,
-      apiKey: apiKeyInput.value,
-    });
-
-    baseUrlInput.value = saved.baseUrl;
-    modelInput.value = saved.model;
-    apiKeyInput.value = saved.apiKey;
-    updateBadge(saved);
-
-    if (announce) {
-      settingsNote.textContent = saved.apiKey
-        ? "Ключ сохранён в этом браузере. Он не попадает в репозиторий и отправляется только в указанный API."
-        : "Ключ пуст — документ будет собран в демо-режиме.";
-      setStatus(saved.apiKey ? "Настройки сохранены." : "Настройки сохранены, но ключ пуст — включён демо-режим.");
-    }
-    return saved;
-  }
-
-  function clearSettings() {
-    Forma.ai.clear();
-    baseUrlInput.value = Forma.ai.DEFAULTS.baseUrl;
-    modelInput.value = Forma.ai.DEFAULTS.model;
-    apiKeyInput.value = "";
-    apiKeyInput.type = "password";
-    keyToggle.textContent = "Показать";
-    keyToggle.setAttribute("aria-pressed", "false");
-    updateBadge();
-    settingsNote.textContent = "Ключ удалён из этого браузера. Документы снова собираются в демо-режиме.";
+  function setBadge() {
+    badge.textContent = "ИИ · GigaChat-2";
+    badge.title = "Содержание собирает GigaChat на сервере FORMA.";
+    badge.classList.add("badge--live");
   }
 
   function applyFormatUI() {
@@ -263,32 +170,6 @@
   });
 
   generateButton.addEventListener("click", generate);
-  saveSettingsButton.addEventListener("click", function () {
-    applySettings(true);
-  });
-  clearSettingsButton.addEventListener("click", clearSettings);
-  gigaPresetButton.addEventListener("click", function () {
-    baseUrlInput.value = "http://127.0.0.1:8787/v1";
-    modelInput.value = "GigaChat-2";
-    if (!apiKeyInput.value.trim()) apiKeyInput.value = "local";
-    setStatus("Адрес и модель GigaChat подставлены. Запустите proxy/start-gigachat.bat, затем нажмите «Сохранить».");
-  });
-
-  keyToggle.addEventListener("click", function () {
-    const revealed = apiKeyInput.type === "text";
-    apiKeyInput.type = revealed ? "password" : "text";
-    keyToggle.textContent = revealed ? "Показать" : "Скрыть";
-    keyToggle.setAttribute("aria-pressed", String(!revealed));
-  });
-
-  settingsToggle.addEventListener("click", function () {
-    settings.open = !settings.open;
-    settingsToggle.setAttribute("aria-expanded", String(settings.open));
-  });
-
-  settings.addEventListener("toggle", function () {
-    settingsToggle.setAttribute("aria-expanded", String(settings.open));
-  });
 
   window.addEventListener("beforeunload", function () {
     if (lastUrl) URL.revokeObjectURL(lastUrl);
@@ -304,12 +185,9 @@
       return;
     }
 
-    const config = applySettings(false);
-    if (!config) return;
-
     setBusy(true);
     hideResult();
-    setStatus(config.apiKey ? "Модель пишет содержание…" : "Собираю демонстрационный документ…");
+    setStatus("GigaChat пишет содержание…");
 
     const depsReady = Forma.deps.ensure(format).then(
       function () {
@@ -419,8 +297,7 @@
   }
 
   format = readStoredFormat();
-  fillSettings();
+  setBadge();
   applyFormatUI();
   updateCounter();
-  if (!Forma.ai.load().apiKey) settings.open = true;
 })();
