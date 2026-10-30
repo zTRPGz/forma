@@ -38,13 +38,36 @@
     return [doc.author, doc.date].filter(Boolean).join(" · ");
   }
 
+  const FALLBACK_THEME = {
+    ink: INK,
+    navy: NAVY,
+    accent: ACCENT,
+    muted: MUTED,
+    rule: RULE,
+    alt: ALT,
+    light: LIGHT_TEXT,
+    meta: COVER_META,
+    sheet: WHITE,
+    headFont: HEAD_FONT,
+    bodyFont: BODY_FONT,
+  };
+
+  function themeOf(doc) {
+    if (!Forma.themes) return FALLBACK_THEME;
+    return Forma.themes.resolve(doc && doc.theme);
+  }
+
+  function pdfHex(hex) {
+    return "#" + String(hex || "000000").replace(/^#/, "");
+  }
+
   // ---------- DOCX ----------
 
-  function docxStyles(D) {
+  function docxStyles(D, T) {
     return {
       default: {
         document: {
-          run: { font: BODY_FONT, size: 22, color: INK },
+          run: { font: T.bodyFont, size: 22, color: T.ink },
           paragraph: { spacing: { line: 348, after: 160 } },
         },
       },
@@ -53,21 +76,21 @@
           id: "FormaTitle",
           name: "Forma Title",
           quickFormat: true,
-          run: { font: HEAD_FONT, size: 60, bold: true, color: INK },
+          run: { font: T.headFont, size: 60, bold: true, color: T.ink },
           paragraph: { spacing: { before: 960, after: 160, line: 252 }, keepNext: true },
         },
         {
           id: "FormaSubtitle",
           name: "Forma Subtitle",
           quickFormat: true,
-          run: { font: BODY_FONT, size: 26, color: ACCENT },
+          run: { font: T.bodyFont, size: 26, color: T.accent },
           paragraph: { spacing: { before: 0, after: 560, line: 300 }, keepNext: true },
         },
         {
           id: "FormaMeta",
           name: "Forma Meta",
           quickFormat: true,
-          run: { font: BODY_FONT, size: 19, color: MUTED },
+          run: { font: T.bodyFont, size: 19, color: T.muted },
           paragraph: { spacing: { before: 0, after: 80, line: 300 } },
         },
         {
@@ -75,12 +98,12 @@
           name: "Forma Heading",
           quickFormat: true,
           basedOn: "Normal",
-          run: { font: HEAD_FONT, size: 32, bold: true, color: INK },
+          run: { font: T.headFont, size: 32, bold: true, color: T.ink },
           paragraph: {
             spacing: { before: 400, after: 200, line: 276 },
             keepNext: true,
             border: {
-              bottom: { style: D.BorderStyle.SINGLE, size: 8, space: 4, color: ACCENT },
+              bottom: { style: D.BorderStyle.SINGLE, size: 8, space: 4, color: T.accent },
             },
           },
         },
@@ -89,7 +112,7 @@
           name: "Forma Body",
           quickFormat: true,
           basedOn: "Normal",
-          run: { font: BODY_FONT, size: 22, color: INK },
+          run: { font: T.bodyFont, size: 22, color: T.ink },
           paragraph: { spacing: { before: 0, after: 160, line: 348 } },
         },
         {
@@ -97,7 +120,7 @@
           name: "Forma Bullet",
           quickFormat: true,
           basedOn: "Normal",
-          run: { font: BODY_FONT, size: 22, color: INK },
+          run: { font: T.bodyFont, size: 22, color: T.ink },
           paragraph: {
             spacing: { before: 0, after: 80, line: 324 },
             indent: { left: 720, hanging: 360 },
@@ -108,7 +131,7 @@
           name: "Forma Cell",
           quickFormat: true,
           basedOn: "Normal",
-          run: { font: BODY_FONT, size: 19, color: INK },
+          run: { font: T.bodyFont, size: 19, color: T.ink },
           paragraph: { spacing: { before: 40, after: 40, line: 276 } },
         },
         {
@@ -116,13 +139,13 @@
           name: "Forma Cell Head",
           quickFormat: true,
           basedOn: "FormaCell",
-          run: { font: BODY_FONT, size: 19, bold: true, color: WHITE },
+          run: { font: T.bodyFont, size: 19, bold: true, color: WHITE },
         },
       ],
     };
   }
 
-  function docxNumbering(D) {
+  function docxNumbering(D, T) {
     return {
       config: [
         {
@@ -135,7 +158,7 @@
               alignment: D.AlignmentType.LEFT,
               style: {
                 paragraph: { indent: { left: 720, hanging: 360 } },
-                run: { color: ACCENT, font: BODY_FONT },
+                run: { color: T.accent, font: T.bodyFont },
               },
             },
           ],
@@ -144,7 +167,7 @@
     };
   }
 
-  function docxTable(D, table) {
+  function docxTable(D, table, T) {
     const weights = table.headers.map(function (_, index) {
       return index === 0 ? 1.25 : 1;
     });
@@ -156,7 +179,7 @@
       return Math.floor((available * weight) / weightSum);
     });
 
-    const border = { style: D.BorderStyle.SINGLE, size: 4, color: RULE };
+    const border = { style: D.BorderStyle.SINGLE, size: 4, color: T.rule };
     const margins = { top: 60, bottom: 60, left: 100, right: 100 };
 
     function cell(text, index, style, fill) {
@@ -178,7 +201,7 @@
       new D.TableRow({
         tableHeader: true,
         children: table.headers.map(function (header, index) {
-          return cell(header, index, "FormaCellHead", NAVY);
+          return cell(header, index, "FormaCellHead", T.navy);
         }),
       }),
     ];
@@ -187,7 +210,7 @@
       rows.push(
         new D.TableRow({
           children: row.map(function (value, index) {
-            return cell(value, index, "FormaCell", rowIndex % 2 === 1 ? ALT : null);
+            return cell(value, index, "FormaCell", rowIndex % 2 === 1 ? T.alt : null);
           }),
         })
       );
@@ -209,15 +232,15 @@
     });
   }
 
-  function docxHeaderFooter(D) {
+  function docxHeaderFooter(D, T) {
     const header = new D.Header({
       children: [
         new D.Paragraph({
           spacing: { after: 0 },
-          border: { bottom: { style: D.BorderStyle.SINGLE, size: 4, space: 4, color: RULE } },
+          border: { bottom: { style: D.BorderStyle.SINGLE, size: 4, space: 4, color: T.rule } },
           children: [
-            new D.TextRun({ text: "FORMA", size: 16, bold: true, color: ACCENT, font: BODY_FONT }),
-            new D.TextRun({ text: "   ·   документ", size: 16, color: MUTED, font: BODY_FONT }),
+            new D.TextRun({ text: "FORMA", size: 16, bold: true, color: T.accent, font: T.bodyFont }),
+            new D.TextRun({ text: "   ·   документ", size: 16, color: T.muted, font: T.bodyFont }),
           ],
         }),
       ],
@@ -231,8 +254,8 @@
             new D.TextRun({
               children: [D.PageNumber.CURRENT],
               size: 16,
-              color: MUTED,
-              font: BODY_FONT,
+              color: T.muted,
+              font: T.bodyFont,
             }),
           ],
         }),
@@ -245,6 +268,7 @@
   async function renderDocx(doc) {
     const D = global.docx;
     if (!D) throw new Error("Библиотека docx не загрузилась.");
+    const T = themeOf(doc);
 
     const paragraphs = [
       new D.Paragraph({
@@ -296,19 +320,19 @@
       });
 
       if (section.table) {
-        paragraphs.push(docxTable(D, section.table));
+        paragraphs.push(docxTable(D, section.table, T));
         paragraphs.push(new D.Paragraph({ spacing: { after: 120 }, children: [] }));
       }
     });
 
-    const parts = docxHeaderFooter(D);
+    const parts = docxHeaderFooter(D, T);
 
     const document = new D.Document({
       title: doc.title,
       creator: doc.author || "Forma",
       description: "Документ собран в FORMA",
-      styles: docxStyles(D),
-      numbering: docxNumbering(D),
+      styles: docxStyles(D, T),
+      numbering: docxNumbering(D, T),
       sections: [
         {
           properties: {
@@ -331,15 +355,16 @@
 
   // ---------- PPTX ----------
 
-  function pptxText(slide, x, y, w, h, text, options) {
+  function pptxText(slide, x, y, w, h, text, options, T) {
+    const theme = T || FALLBACK_THEME;
     const base = {
       x: x,
       y: y,
       w: w,
       h: h,
       margin: 0,
-      fontFace: BODY_FONT,
-      color: INK,
+      fontFace: theme.bodyFont,
+      color: theme.ink,
       valign: "top",
     };
     slide.addText(text, Object.assign(base, options));
@@ -356,76 +381,76 @@
     });
   }
 
-  function pptxCover(pptx, RECT, doc) {
+  function pptxCover(pptx, RECT, doc, T) {
     const slide = pptx.addSlide();
-    slide.background = { color: NAVY };
-    pptxRect(slide, RECT, 0, 0, 0.16, PPT_H, ACCENT);
+    slide.background = { color: T.navy };
+    pptxRect(slide, RECT, 0, 0, 0.16, PPT_H, T.accent);
     pptxText(slide, PPT_M, 0.62, 5, 0.4, "FORMA", {
-      fontFace: BODY_FONT,
+      fontFace: T.bodyFont,
       fontSize: 11,
       bold: true,
-      color: ACCENT,
-    });
+      color: T.accent,
+    }, T);
 
     const title = doc.title;
     const titleSize = title.length <= 55 ? 40 : title.length <= 90 ? 32 : 27;
     pptxText(slide, PPT_M, 2.2, PPT_CONTENT_W, 2.05, title, {
-      fontFace: HEAD_FONT,
+      fontFace: T.headFont,
       fontSize: titleSize,
       bold: true,
       color: WHITE,
       lineSpacingMultiple: 0.98,
       fit: "shrink",
-    });
+    }, T);
 
-    pptxRect(slide, RECT, PPT_M, 4.55, 1.3, 0.06, ACCENT);
+    pptxRect(slide, RECT, PPT_M, 4.55, 1.3, 0.06, T.accent);
 
     if (doc.subtitle) {
       pptxText(slide, PPT_M, 4.86, PPT_CONTENT_W, 0.6, doc.subtitle, {
         fontSize: 16,
-        color: LIGHT_TEXT,
-      });
+        color: T.light,
+      }, T);
     }
 
     const meta = metaLine(doc);
     if (meta) {
       pptxText(slide, PPT_M, 6.6, PPT_CONTENT_W, 0.36, meta, {
         fontSize: 11,
-        color: COVER_META,
-      });
+        color: T.meta,
+      }, T);
     }
   }
 
-  function pptxHeading(slide, RECT, text) {
+  function pptxHeading(slide, RECT, text, T) {
     const size = text.length <= 42 ? 30 : text.length <= 70 ? 25 : 22;
     pptxText(slide, PPT_M, 0.62, PPT_CONTENT_W, 0.95, text, {
-      fontFace: HEAD_FONT,
+      fontFace: T.headFont,
       fontSize: size,
       bold: true,
-      color: INK,
+      color: T.ink,
       lineSpacingMultiple: 1.0,
       fit: "shrink",
-    });
-    pptxRect(slide, RECT, PPT_M, 1.62, 0.85, 0.055, ACCENT);
+    }, T);
+    pptxRect(slide, RECT, PPT_M, 1.62, 0.85, 0.055, T.accent);
   }
 
-  function pptxFooter(slide, RECT, page) {
-    pptxRect(slide, RECT, PPT_M, 6.98, PPT_CONTENT_W, 0.01, RULE);
+  function pptxFooter(slide, RECT, page, T) {
+    pptxRect(slide, RECT, PPT_M, 6.98, PPT_CONTENT_W, 0.01, T.rule);
     pptxText(slide, PPT_M, 7.1, 4, 0.26, "FORMA", {
       fontSize: 8.5,
       bold: true,
-      color: MUTED,
-    });
+      color: T.muted,
+    }, T);
     pptxText(slide, PPT_W - PPT_M - 1.0, 7.1, 1.0, 0.26, String(page).padStart(2, "0"), {
       fontSize: 8.5,
-      color: MUTED,
+      color: T.muted,
       align: "right",
-    });
+    }, T);
   }
 
-  function pptxContentSlide(pptx, RECT, section, page) {
+  function pptxContentSlide(pptx, RECT, section, page, T) {
     const slide = pptx.addSlide();
-    pptxHeading(slide, RECT, section.heading);
+    pptxHeading(slide, RECT, section.heading, T);
 
     let total = 0;
     section.paragraphs.forEach(function (text) {
@@ -458,7 +483,7 @@
         options: {
           breakLine: true,
           fontSize: size,
-          color: INK,
+          color: T.ink,
           lineSpacingMultiple: 1.12,
           paraSpaceAfter: paragraphGap,
         },
@@ -471,7 +496,7 @@
           breakLine: true,
           bullet: { code: "2014" },
           fontSize: size,
-          color: INK,
+          color: T.ink,
           lineSpacingMultiple: 1.08,
           paraSpaceAfter: bulletGap,
         },
@@ -485,12 +510,12 @@
       h: 4.8,
       margin: 0,
       valign: "top",
-      fontFace: BODY_FONT,
+      fontFace: T.bodyFont,
       fit: "shrink",
       breakLine: false,
     });
 
-    pptxFooter(slide, RECT, page);
+    pptxFooter(slide, RECT, page, T);
   }
 
   function pptxTablePlan(table, colW) {
@@ -529,9 +554,9 @@
     return measure(sizes[sizes.length - 1]);
   }
 
-  function pptxTableSlide(pptx, RECT, heading, table, page) {
+  function pptxTableSlide(pptx, RECT, heading, table, page, T) {
     const slide = pptx.addSlide();
-    pptxHeading(slide, RECT, heading);
+    pptxHeading(slide, RECT, heading, T);
 
     const weights = table.headers.map(function (_, index) {
       return index === 0 ? 1.25 : 1;
@@ -551,7 +576,7 @@
     const rows = [
       table.headers.map(function (header) {
         return cell(header, {
-          fill: { color: NAVY },
+          fill: { color: T.navy },
           color: WHITE,
           bold: true,
           fontSize: plan.fontSize,
@@ -564,8 +589,8 @@
       rows.push(
         row.map(function (value) {
           return cell(value, {
-            fill: { color: rowIndex % 2 === 1 ? ALT : WHITE },
-            color: INK,
+            fill: { color: rowIndex % 2 === 1 ? T.alt : WHITE },
+            color: T.ink,
             fontSize: plan.fontSize,
             valign: "middle",
           });
@@ -579,19 +604,20 @@
       w: PPT_CONTENT_W,
       colW: colW,
       rowH: plan.heights,
-      border: { type: "solid", pt: 0.75, color: RULE },
-      fontFace: BODY_FONT,
+      border: { type: "solid", pt: 0.75, color: T.rule },
+      fontFace: T.bodyFont,
       margin: [3, 7, 3, 7],
       valign: "middle",
       autoPage: false,
     });
 
-    pptxFooter(slide, RECT, page);
+    pptxFooter(slide, RECT, page, T);
   }
 
   async function renderPptx(doc) {
     const Pptx = global.PptxGenJS;
     if (!Pptx) throw new Error("Библиотека PptxGenJS не загрузилась.");
+    const T = themeOf(doc);
 
     const pptx = new Pptx();
     pptx.defineLayout({ name: "FORMA_WIDE", width: PPT_W, height: PPT_H });
@@ -601,16 +627,16 @@
     pptx.author = doc.author || "Forma";
     pptx.company = "FORMA";
 
-    pptxCover(pptx, RECT, doc);
+    pptxCover(pptx, RECT, doc, T);
 
     let page = 2;
     doc.sections.forEach(function (section) {
       if (section.paragraphs.length || section.bullets.length) {
-        pptxContentSlide(pptx, RECT, section, page);
+        pptxContentSlide(pptx, RECT, section, page, T);
         page += 1;
       }
       if (section.table) {
-        pptxTableSlide(pptx, RECT, section.heading, section.table, page);
+        pptxTableSlide(pptx, RECT, section.heading, section.table, page, T);
         page += 1;
       }
     });
@@ -637,7 +663,7 @@
     };
   }
 
-  function pdfTable(table) {
+  function pdfTable(table, T) {
     const cols = table.headers.length;
     const weights = table.headers.map(function (_, index) {
       return index === 0 ? 1.25 : 1;
@@ -657,7 +683,7 @@
     table.rows.forEach(function (row) {
       body.push(
         row.map(function (value) {
-          return { text: value, color: PDF_INK, fontSize: 9 };
+          return { text: value, color: pdfHex(T.ink), fontSize: 9 };
         })
       );
     });
@@ -667,14 +693,14 @@
       table: { headerRows: 1, widths: widths, body: body },
       layout: {
         fillColor: function (rowIndex) {
-          if (rowIndex === 0) return PDF_NAVY;
-          return rowIndex % 2 === 0 ? PDF_ALT : null;
+          if (rowIndex === 0) return pdfHex(T.navy);
+          return rowIndex % 2 === 0 ? pdfHex(T.alt) : null;
         },
         hLineColor: function () {
-          return PDF_RULE;
+          return pdfHex(T.rule);
         },
         vLineColor: function () {
-          return PDF_RULE;
+          return pdfHex(T.rule);
         },
         hLineWidth: function () {
           return 0.5;
@@ -701,6 +727,7 @@
 
   async function renderPdf(doc) {
     if (!global.pdfMake) throw new Error("Библиотека pdfmake не загрузилась.");
+    const T = themeOf(doc);
 
     const content = [{ text: doc.title, style: "title" }];
 
@@ -709,12 +736,12 @@
     const meta = metaLine(doc);
     if (meta) content.push({ text: meta, style: "meta" });
 
-    content.push(pdfLine(PDF_CONTENT_W, PDF_ACCENT, 1.4, [0, 2, 0, 16]));
+    content.push(pdfLine(PDF_CONTENT_W, pdfHex(T.accent), 1.4, [0, 2, 0, 16]));
 
     doc.sections.forEach(function (section) {
       const nodes = [];
       nodes.push({ text: section.heading, style: "h1" });
-      nodes.push(pdfLine(PDF_CONTENT_W * 0.32, PDF_ACCENT, 1.3, [0, 0, 0, 10]));
+      nodes.push(pdfLine(PDF_CONTENT_W * 0.32, pdfHex(T.accent), 1.3, [0, 0, 0, 10]));
 
       let textLength = 0;
       section.paragraphs.forEach(function (text) {
@@ -726,7 +753,7 @@
         textLength += item.length;
         nodes.push({
           columns: [
-            { text: "—", width: 14, color: PDF_ACCENT, fontSize: 10.5 },
+            { text: "—", width: 14, color: pdfHex(T.accent), fontSize: 10.5 },
             { text: item },
           ],
           columnGap: 4,
@@ -734,7 +761,7 @@
         });
       });
 
-      if (section.table) nodes.push(pdfTable(section.table));
+      if (section.table) nodes.push(pdfTable(section.table, T));
 
       if (section.table && textLength <= 600) {
         content.push({ unbreakable: true, stack: nodes });
@@ -749,13 +776,13 @@
       pageSize: "A4",
       pageMargins: [62, 72, 62, 52],
       info: { title: doc.title, author: doc.author || "Forma", creator: "Forma" },
-      defaultStyle: { font: "Roboto", fontSize: 10.5, lineHeight: 1.4, color: PDF_INK },
+      defaultStyle: { font: "Roboto", fontSize: 10.5, lineHeight: 1.4, color: pdfHex(T.ink) },
       styles: {
-        title: { fontSize: 26, bold: true, color: PDF_INK, margin: [0, 0, 0, 8] },
-        subtitle: { fontSize: 12.5, color: PDF_ACCENT, margin: [0, 0, 0, 12] },
-        meta: { fontSize: 8.5, color: PDF_MUTED, margin: [0, 0, 0, 4] },
-        h1: { fontSize: 15, bold: true, color: PDF_INK, margin: [0, 16, 0, 4] },
-        body: { fontSize: 10.5, lineHeight: 1.4, color: PDF_INK, margin: [0, 0, 0, 8] },
+        title: { fontSize: 26, bold: true, color: pdfHex(T.ink), margin: [0, 0, 0, 8] },
+        subtitle: { fontSize: 12.5, color: pdfHex(T.accent), margin: [0, 0, 0, 12] },
+        meta: { fontSize: 8.5, color: pdfHex(T.muted), margin: [0, 0, 0, 4] },
+        h1: { fontSize: 15, bold: true, color: pdfHex(T.ink), margin: [0, 16, 0, 4] },
+        body: { fontSize: 10.5, lineHeight: 1.4, color: pdfHex(T.ink), margin: [0, 0, 0, 8] },
       },
       header: function () {
         return {
@@ -763,8 +790,8 @@
           stack: [
             {
               columns: [
-                { text: "FORMA", bold: true, fontSize: 8, color: PDF_ACCENT },
-                { text: "документ", fontSize: 8, color: PDF_MUTED, alignment: "right" },
+                { text: "FORMA", bold: true, fontSize: 8, color: pdfHex(T.accent) },
+                { text: "документ", fontSize: 8, color: pdfHex(T.muted), alignment: "right" },
               ],
             },
             {
@@ -777,7 +804,7 @@
                   x2: PDF_CONTENT_W,
                   y2: 0,
                   lineWidth: 0.6,
-                  lineColor: PDF_RULE,
+                  lineColor: pdfHex(T.rule),
                 },
               ],
             },
@@ -796,7 +823,7 @@
                 x2: PDF_CONTENT_W,
                 y2: 0,
                 lineWidth: 0.6,
-                lineColor: PDF_RULE,
+                lineColor: pdfHex(T.rule),
               },
             ],
           },
@@ -804,7 +831,7 @@
             text: String(currentPage),
             alignment: "center",
             fontSize: 8,
-            color: PDF_MUTED,
+            color: pdfHex(T.muted),
             margin: [0, 6, 0, 0],
           },
         ];

@@ -28,6 +28,36 @@
     return [doc.author, doc.date].filter(Boolean).join(" · ");
   }
 
+  function fontStack(name, fallback) {
+    const value = String(name || "").trim().replace(/["\\]/g, "");
+    if (!value) return fallback;
+    const serif = /(georgia|cambria|palatino|times|garamond|book|constantia|baskerville|didot)/i.test(value);
+    return '"' + value + '", ' + (serif ? "Georgia, serif" : '"Segoe UI", Arial, sans-serif');
+  }
+
+  function applyTheme(root, doc) {
+    if (!Forma.themes) return;
+    const T = Forma.themes.resolve(doc && doc.theme);
+    const color = function (hex) {
+      return "#" + hex;
+    };
+    const style = root.style;
+    style.setProperty("--ink", color(T.ink));
+    style.setProperty("--navy", color(T.navy));
+    style.setProperty("--accent", color(T.accent));
+    style.setProperty("--muted", color(T.muted));
+    style.setProperty("--rule", color(T.rule));
+    style.setProperty("--serif", fontStack(T.headFont, "Georgia, serif"));
+    style.setProperty("--sans", fontStack(T.bodyFont, '"Segoe UI", Arial, sans-serif'));
+    style.setProperty("--pv-alt", color(T.alt));
+    style.setProperty("--pv-light", color(T.light));
+    style.setProperty("--pv-meta", color(T.meta));
+    style.setProperty("--pv-sheet", color(T.sheet));
+    style.setProperty("--pv-cover", color(T.navy));
+    style.setProperty("--pv-cover-2", color(Forma.themes.blend(T.navy, T.accent, 0.14)));
+    style.setProperty("--pv-brand-dark", color(Forma.themes.blend(T.accent, T.light, 0.25)));
+  }
+
   function lineCount(text, perLine) {
     return Math.max(1, Math.ceil(String(text).length / perLine));
   }
@@ -196,6 +226,7 @@
 
   function docx(doc) {
     const root = node("div", "doc-preview");
+    applyTheme(root, doc);
     const innerWidth = DOC.width - DOC.padX * 2;
     const meta = metaLine(doc);
     const titleHeight =
@@ -245,6 +276,7 @@
 
   function pdf(doc) {
     const root = node("div", "doc-preview pdf-preview");
+    applyTheme(root, doc);
     const innerWidth = DOC.width - DOC.padX * 2;
     const meta = metaLine(doc);
     const titleHeight =
@@ -406,6 +438,7 @@
 
   function pptx(doc) {
     const root = node("div", "slides-preview");
+    applyTheme(root, doc);
     root.append(pptxCover(doc));
 
     let page = 2;

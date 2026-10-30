@@ -35,17 +35,36 @@
     pptx: "Презентация: 4–6 разделов-слайдов, в каждом 2–4 коротких пункта до 15 слов; абзацы короткие, не больше одного на слайд. Объём — 700–1200 знаков: слайды не должны быть перегружены текстом.",
   };
 
-  function maxTokensFor(format) {
-    return format === "pptx" ? 3000 : MAX_TOKENS;
+  function maxTokensFor(format, options) {
+    if (format !== "pptx") return MAX_TOKENS;
+    const slides = options && options.slides ? options.slides : 6;
+    return Math.min(MAX_TOKENS, 3000 + Math.max(0, slides - 6) * 160);
   }
 
-  function schemaHint(format) {
+  function schemaHint(format, options) {
+    let brief = FORMAT_BRIEF[format] || "";
+    if (format === "pptx" && options && options.slides) {
+      const slides = options.slides;
+      const content = slides - 1;
+      brief =
+        "Презентация ровно на " +
+        slides +
+        " слайдов, включая титульный: " +
+        content +
+        " содержательных. Верни ровно " +
+        content +
+        " разделов — по одному слайду на раздел. Таблицы не используй. В каждом разделе 2–4 коротких пункта до 15 слов; абзац не больше одного, до 300 знаков. Объём — " +
+        Math.round(content * 130) +
+        "–" +
+        Math.round(content * 220) +
+        " знаков: слайды не должны быть перегружены текстом.";
+    }
     return [
       'Формат: {"title": "…", "subtitle": "…", "author": "", "sections": [',
       '{"heading": "…", "paragraphs": ["…"], "bullets": ["…"], "table": {"headers": ["…"], "rows": [["…"]]}}',
       "]}",
       "Поле table необязательно: если таблица не нужна, не добавляй его вовсе.",
-      "Формат документа: " + FORMAT_NAMES[format] + ". " + (FORMAT_BRIEF[format] || ""),
+      "Формат документа: " + FORMAT_NAMES[format] + ". " + brief,
     ].join("\n");
   }
 
@@ -141,10 +160,17 @@
     return { filled: filled, chars: chars };
   }
 
-  function isThin(doc, format) {
+  function isThin(doc, format, options) {
     const weight = documentWeight(doc);
-    const minChars = format === "pptx" ? 500 : 900;
-    return weight.filled < 4 || weight.chars < minChars;
+    const targetSections =
+      format === "pptx" && options && options.slides ? Math.max(2, options.slides - 1) : 4;
+    const minChars =
+      format === "pptx"
+        ? options && options.slides
+          ? Math.max(350, Math.min(900, targetSections * 80))
+          : 500
+        : 900;
+    return weight.filled < targetSections || weight.chars < minChars;
   }
 
   function textFromContent(content) {
@@ -170,7 +196,7 @@
     return detail || "ИИ вернул ошибку.";
   }
 
-  function buildMessages(topic, format) {
+  function buildMessages(topic, format, options) {
     const facts = /\d/.test(topic)
       ? ""
       : "\n\nВ теме не указано ни одного числа, поэтому в документе не должно быть процентов, сумм, статистики и сроков «через N дней» — только качественные формулировки.";
@@ -184,9 +210,21 @@
           "»\n\nСобери документ на эту тему. Читатель — занятый руководитель: ему нужны суть, действия и риски, а не общие рассуждения." +
           facts +
           "\n\n" +
-          schemaHint(format),
+          schemaHint(format, options),
       },
     ];
+  }
+
+  function expansionPrompt(format, options) {
+    if (format === "pptx" && options && options.slides) {
+      const content = options.slides - 1;
+      return (
+        "Содержания слишком мало: нужно ровно " +
+        content +
+        " разделов — по одному слайду на раздел, без таблиц. В каждом разделе 2–4 конкретных пункта до 15 слов. Расширь презентацию и верни полный JSON по схеме из первого сообщения, без пояснений."
+      );
+    }
+    return "Содержания слишком мало: нужно 4–6 разделов с конкретикой — действиями, сроками, ответственными и рисками. В каждом разделе 1–3 абзаца по 400–700 знаков. Расширь документ и верни полный JSON по схеме из первого сообщения, без пояснений.";
   }
 
   function repairPrompt(answer) {
@@ -261,13 +299,13 @@
     }
   }
 
-  async function requestCompletion(topic, format) {
+  async function requestCompletion(topic, format, options) {
     const controller = new AbortController();
     const timer = setTimeout(function () {
       controller.abort();
     }, TIMEOUT_MS);
-    const messages = buildMessages(topic, format);
-    const budget = maxTokensFor(format);
+    const messages = buildMessages(topic, format, options);
+    const budget = maxTokensFor(format, options);
 
     try {
       let answer;
@@ -322,20 +360,14 @@
         throw error;
       }
 
-      if (isThin(parsed, format)) {
+      if (isThin(parsed, format, options)) {
         const expanded = await complete(
-          messages.concat([
-            {
-              role: "user",
-              content:
-                "Содержания слишком мало: нужно 4–6 разделов с конкретикой — действиями, сроками, ответственными и рисками. В каждом разделе 1–3 абзаца по 400–700 знаков. Расширь документ и верни полный JSON по схеме из первого сообщения, без пояснений.",
-            },
-          ]),
+          messages.concat([{ role: "user", content: expansionPrompt(format, options) }]),
           { json: jsonMode, temperature: 0.4, maxTokens: budget },
           controller.signal
         );
         const fuller = parseContent(expanded.content);
-        if (fuller && !isThin(fuller, format)) parsed = fuller;
+        if (fuller && !isThin(fuller, format, options)) parsed = fuller;
       }
 
       return parsed;
@@ -368,12 +400,12 @@
     }
   }
 
-  async function generateContent(topic, format) {
-    const demoDoc = Forma.normalize(Forma.demo(topic, format), format);
+  async function generateContent(topic, format, options) {
+    const demoDoc = Forma.normalize(Forma.demo(topic, format, options), format, options);
 
     try {
-      const raw = await requestCompletion(topic, format);
-      const doc = Forma.normalize(raw, format);
+      const raw = await requestCompletion(topic, format, options);
+      const doc = Forma.normalize(raw, format, options);
       if (raw.author) doc.author = Forma.clean(raw.author, 80);
       if (raw.date) doc.date = Forma.clean(raw.date, 40);
       return { doc: doc, provider: "ИИ", model: "GigaChat-2", note: "" };

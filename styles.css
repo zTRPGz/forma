@@ -665,7 +665,182 @@ body::before {
   color: var(--muted);
 }
 
+/* ---------- число слайдов ---------- */
+
+.option-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--surface-soft);
+  border: 1px solid var(--rule-soft);
+  border-radius: 12px;
+}
+
+.option-row[hidden] {
+  display: none;
+}
+
+.option-label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.segmented {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  background: #efe6d7;
+  border-radius: 9px;
+}
+
+.seg-btn {
+  min-width: 36px;
+  height: 30px;
+  padding: 0 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.seg-btn:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.seg-btn.is-active {
+  color: #fff;
+  background: var(--navy);
+  box-shadow: 0 6px 12px -10px rgba(22, 36, 58, 0.9);
+}
+
+.option-hint {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+/* ---------- шаблоны ---------- */
+
+.templates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.template-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.template {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px 7px 7px;
+  font: inherit;
+  color: inherit;
+  background: var(--surface-soft);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.template:hover {
+  border-color: var(--rule-strong);
+  transform: translateY(-1px);
+}
+
+.template.is-active {
+  background: #fff;
+  border-color: var(--navy);
+  box-shadow: inset 0 0 0 1px var(--navy);
+}
+
+.swatch {
+  flex: none;
+  width: 30px;
+  height: 22px;
+  border: 1px solid rgba(22, 36, 58, 0.14);
+  border-radius: 5px;
+}
+
+.template-name {
+  max-width: 132px;
+  overflow: hidden;
+  font-size: 12.5px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.template-attach {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px dashed var(--rule-strong);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+
+.template-attach:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.template-attach.is-busy {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.attach-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  font-size: 14px;
+  line-height: 1;
+  color: inherit;
+  background: var(--paper-deep);
+  border-radius: 50%;
+}
+
+.template-note {
+  margin: 10px 0 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.template-note.is-error {
+  color: #9b2c1f;
+}
+
 .format:focus-visible,
+.seg-btn:focus-visible,
+.template:focus-visible,
+.template-attach:focus-visible,
 .idea:focus-visible,
 .cta:focus-visible,
 .download:focus-visible,
@@ -1220,7 +1395,7 @@ textarea:focus {
   overflow: hidden;
   container-type: inline-size;
   color: var(--ink);
-  background: #fff;
+  background: var(--pv-sheet, #fff);
   border: 1px solid #e2d8c8;
   box-shadow: 0 18px 40px -24px rgba(22, 36, 58, 0.45), 0 2px 6px rgba(22, 36, 58, 0.06);
   font-family: var(--sans);
@@ -1352,7 +1527,7 @@ textarea:focus {
 }
 
 .doc-table tbody tr:nth-child(even) {
-  background: #f3ede4;
+  background: var(--pv-alt, #f3ede4);
 }
 
 /* --- макет PDF (A4) --- */
@@ -1418,14 +1593,14 @@ textarea:focus {
   overflow: hidden;
   container-type: inline-size;
   color: var(--ink);
-  background: #fff;
+  background: var(--pv-sheet, #fff);
   border: 1px solid #ded3c2;
   box-shadow: 0 16px 36px -26px rgba(22, 36, 58, 0.55);
   font-family: var(--sans);
 }
 
 .slide--cover {
-  background: linear-gradient(140deg, #16243a 0%, #1f3149 100%);
+  background: linear-gradient(140deg, var(--pv-cover, #16243a) 0%, var(--pv-cover-2, #1f3149) 100%);
 }
 
 .slide-bar {
@@ -1444,7 +1619,7 @@ textarea:focus {
   font-size: 1.15cqw;
   font-weight: 700;
   letter-spacing: 0.1em;
-  color: #d9985a;
+  color: var(--pv-brand-dark, #d9985a);
 }
 
 .slide-cover-title {
@@ -1478,7 +1653,7 @@ textarea:focus {
   margin: 0;
   font-size: 1.67cqw;
   line-height: 1.35;
-  color: #eadfd0;
+  color: var(--pv-light, #eadfd0);
 }
 
 .slide-cover-meta {
@@ -1488,7 +1663,7 @@ textarea:focus {
   width: 86.5cqw;
   margin: 0;
   font-size: 1.15cqw;
-  color: #9aa7b8;
+  color: var(--pv-meta, #9aa7b8);
 }
 
 .slide-heading {
@@ -1600,7 +1775,7 @@ textarea:focus {
 }
 
 .slide-table tbody tr:nth-child(even) {
-  background: #f3ede4;
+  background: var(--pv-alt, #f3ede4);
 }
 
 /* ---------- подвал ---------- */
@@ -1790,6 +1965,36 @@ textarea:focus {
     height: 18px;
   }
 
+  .option-row {
+    gap: 8px;
+    padding: 9px 10px;
+  }
+
+  .option-hint {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
+  .templates {
+    gap: 8px;
+  }
+
+  .template-list {
+    gap: 6px;
+  }
+
+  .template {
+    padding: 6px 10px 6px 6px;
+  }
+
+  .template-name {
+    max-width: 104px;
+  }
+
+  .template-attach {
+    padding: 7px 10px;
+  }
+
   .panel-foot {
     flex-direction: column;
     align-items: flex-start;
@@ -1866,6 +2071,16 @@ textarea:focus {
 
   .format-title {
     font-size: 11.5px;
+  }
+
+  .seg-btn {
+    min-width: 32px;
+    height: 28px;
+    font-size: 11.5px;
+  }
+
+  .template-name {
+    max-width: 88px;
   }
 }
 

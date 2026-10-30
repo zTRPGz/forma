@@ -9,6 +9,9 @@
     pdf: "application/pdf",
   };
   const FORMAT_KEY = "forma.format.v1";
+  const SLIDES_KEY = "forma.slides.v1";
+  const THEME_KEY = "forma.theme.v1";
+  const SLIDE_COUNTS = [4, 6, 8, 10];
 
   const topic = document.getElementById("topic");
   const count = document.getElementById("count");
@@ -29,10 +32,22 @@
   const badge = document.getElementById("llm-badge");
   const formatsEl = document.querySelector(".formats");
   const formatButtons = Array.prototype.slice.call(document.querySelectorAll(".format"));
+  const slidesRow = document.getElementById("slides-row");
+  const slidesEl = document.getElementById("slides");
+  const slideButtons = Array.prototype.slice.call(document.querySelectorAll(".seg-btn"));
+  const templateList = document.getElementById("template-list");
+  const templateFile = document.getElementById("template-file");
+  const templateAttach = document.getElementById("template-attach");
+  const attachLabel = document.getElementById("attach-label");
+  const templateNote = document.getElementById("template-note");
 
   let format = "docx";
   let busy = false;
   let lastUrl = null;
+  let slides = 6;
+  let themeId = "paper";
+  let customTheme = null;
+  let templateMessage = null;
 
   function setStatus(message, isError) {
     statusLine.textContent = message;
@@ -64,6 +79,164 @@
     }
   }
 
+  function readStoredSlides() {
+    try {
+      const stored = Number(localStorage.getItem(SLIDES_KEY));
+      return SLIDE_COUNTS.indexOf(stored) >= 0 ? stored : 6;
+    } catch (error) {
+      return 6;
+    }
+  }
+
+  function storeSlides() {
+    try {
+      localStorage.setItem(SLIDES_KEY, String(slides));
+    } catch (error) {
+      /* не критично */
+    }
+  }
+
+  function readStoredTheme() {
+    try {
+      const stored = localStorage.getItem(THEME_KEY);
+      if (stored === "custom") return "paper";
+      if (stored && Forma.themes && Forma.themes.resolve(stored).id === stored) return stored;
+      return "paper";
+    } catch (error) {
+      return "paper";
+    }
+  }
+
+  function storeTheme() {
+    try {
+      localStorage.setItem(THEME_KEY, themeId);
+    } catch (error) {
+      /* не критично */
+    }
+  }
+
+  function slidesWord(value) {
+    const last = value % 10;
+    const tail = value % 100;
+    if (last === 1 && tail !== 11) return "слайд";
+    if (last >= 2 && last <= 4 && (tail < 12 || tail > 14)) return "слайда";
+    return "слайдов";
+  }
+
+  function currentTheme() {
+    if (themeId === "custom" && customTheme) return customTheme;
+    return Forma.themes ? Forma.themes.resolve(themeId) : themeId;
+  }
+
+  function applySlidesUI() {
+    slideButtons.forEach(function (button) {
+      const active = Number(button.dataset.slides) === slides;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-checked", String(active));
+    });
+    slidesRow.hidden = format !== "pptx";
+  }
+
+  function setTemplateNote(text, isError) {
+    templateMessage = text ? { text: text, error: Boolean(isError) } : null;
+    updateTemplateNote();
+  }
+
+  function updateTemplateNote() {
+    if (templateMessage) {
+      templateNote.hidden = false;
+      templateNote.classList.toggle("is-error", templateMessage.error);
+      templateNote.textContent = templateMessage.text;
+      return;
+    }
+    if (themeId === "custom" && customTheme) {
+      templateNote.hidden = false;
+      templateNote.classList.remove("is-error");
+      templateNote.textContent =
+        "Шаблон «" + customTheme.name + "» прикреплён: цвета и шрифты взяты из файла.";
+      return;
+    }
+    templateNote.hidden = true;
+    templateNote.textContent = "";
+    templateNote.classList.remove("is-error");
+  }
+
+  function templateChip(theme, isCustom) {
+    const key = isCustom ? "custom" : theme.id;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "template" + (themeId === key ? " is-active" : "");
+    button.dataset.theme = key;
+    button.setAttribute("aria-pressed", String(themeId === key));
+    button.title = theme.note || theme.name;
+
+    const swatch = document.createElement("span");
+    swatch.className = "swatch";
+    swatch.setAttribute(
+      "style",
+      "background:linear-gradient(90deg,#" +
+        theme.navy +
+        " 0 36%,#" +
+        theme.accent +
+        " 36% 66%,#" +
+        theme.alt +
+        " 66% 100%)"
+    );
+
+    const name = document.createElement("span");
+    name.className = "template-name";
+    name.textContent = theme.name;
+
+    button.append(swatch, name);
+    button.addEventListener("click", function () {
+      themeId = key;
+      templateMessage = null;
+      renderTemplates();
+      updateTemplateNote();
+      storeTheme();
+      hideResult();
+      setStatus("");
+    });
+    return button;
+  }
+
+  function renderTemplates() {
+    if (!templateList || !Forma.themes) return;
+    templateList.replaceChildren();
+    Forma.themes.presets.forEach(function (theme) {
+      templateList.append(templateChip(theme, false));
+    });
+    if (customTheme) templateList.append(templateChip(customTheme, true));
+  }
+
+  async function attachTemplate(file) {
+    if (!file || !Forma.themes) return;
+    templateAttach.classList.add("is-busy");
+    attachLabel.textContent = "Читаю шаблон…";
+    templateFile.disabled = true;
+    try {
+      const theme = await Forma.themes.fromTemplate(file);
+      customTheme = theme;
+      themeId = "custom";
+      templateMessage = null;
+      renderTemplates();
+      updateTemplateNote();
+      storeTheme();
+      hideResult();
+      setStatus("");
+    } catch (error) {
+      setTemplateNote(
+        "Не удалось прочитать шаблон: " + (error && error.message ? error.message : "неизвестная ошибка."),
+        true
+      );
+    } finally {
+      templateAttach.classList.remove("is-busy");
+      attachLabel.textContent = "Прикрепить .docx / .pptx";
+      templateFile.disabled = false;
+      templateFile.value = "";
+    }
+  }
+
   function setBadge(state, reason) {
     badge.classList.toggle("badge--live", state === "live");
     badge.classList.toggle("badge--demo", state === "demo");
@@ -87,6 +260,7 @@
       button.tabIndex = active ? 0 : -1;
     });
     ctaFormat.textContent = NAMES[format];
+    applySlidesUI();
   }
 
   function selectFormat(next, moveFocus) {
@@ -178,6 +352,25 @@
     selectFormat(formatButtons[nextIndex].dataset.format, true);
   });
 
+  slideButtons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      const next = Number(button.dataset.slides);
+      if (!next || next === slides) return;
+      slides = next;
+      applySlidesUI();
+      storeSlides();
+      hideResult();
+      setStatus("");
+    });
+  });
+
+  if (templateFile) {
+    templateFile.addEventListener("change", function () {
+      const file = templateFile.files && templateFile.files[0];
+      if (file) attachTemplate(file);
+    });
+  }
+
   topic.addEventListener("input", updateCounter);
   topic.addEventListener(
     "focus",
@@ -227,7 +420,11 @@
     const started = performance.now();
 
     try {
-      const generated = await Forma.ai.generateContent(value, format);
+      const options = {
+        slides: format === "pptx" ? slides : null,
+        theme: currentTheme(),
+      };
+      const generated = await Forma.ai.generateContent(value, format, options);
 
       if (!Forma.deps.ready(format)) setStatus("Загружаю модуль вёрстки…");
       const depsError = await depsReady;
@@ -267,7 +464,10 @@
     const doc = generated.doc;
 
     resultTitle.textContent = doc.title;
-    const parts = [NAMES[format], generated.provider];
+    const parts = [NAMES[format]];
+    if (format === "pptx" && doc.slides) parts.push(doc.slides + " " + slidesWord(doc.slides));
+    if (Forma.themes) parts.push("Шаблон · " + Forma.themes.resolve(doc.theme).name);
+    parts.push(generated.provider);
     if (generated.model) parts.push(generated.model);
     parts.push(seconds.toFixed(1).replace(".", ",") + " с");
     resultMeta.replaceChildren();
@@ -328,7 +528,11 @@
   }
 
   format = readStoredFormat();
+  slides = readStoredSlides();
+  themeId = readStoredTheme();
   setBadge("checking");
+  renderTemplates();
+  updateTemplateNote();
   applyFormatUI();
   updateCounter();
 
