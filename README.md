@@ -60,9 +60,9 @@ Chrome, Edge, Яндекс Браузер, Opera, Firefox и Safari 16.4+ — н
 
 Всё работает без внешних CDN, библиотеки лежат на сайте:
 
-- [docx](https://github.com/dolanmiu/docx) 9.15.0 — MIT;
-- [PptxGenJS](https://github.com/gitbrent/PptxGenJS) 4.0.1 — MIT;
-- [pdfmake](http://pdfmake.org/) 0.2.20 — MIT;
+- [docx](https://github.com/dolanmiu/docx) — MIT;
+- [PptxGenJS](https://github.com/gitbrent/PptxGenJS) — MIT;
+- [pdfmake](http://pdfmake.org/) — MIT;
 - Roboto — Apache License 2.0.
 
 Georgia и Segoe UI в DOCX/PPTX не встраиваются: файлы используют системные шрифты, как обычные документы Office.
