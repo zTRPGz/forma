@@ -23,9 +23,41 @@
 
   const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g;
   const SPACES = /\s+/g;
+  const LEADING_MARK = /^\s*(?:\{\s*\}|\(\s*\)|\[\s*\])[\s:;.,—–-]*/;
+  const LEADING_BULLET = /^\s*[-–—•]\s+/;
+  const TEXT_KEYS = [
+    "text", "point", "value", "content", "title", "header",
+    "label", "name", "description", "desc",
+  ];
+
+  function textOf(value) {
+    if (value == null) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    if (Array.isArray(value)) {
+      return value.map(textOf).filter(Boolean).join(" ");
+    }
+    if (typeof value === "object") {
+      for (let i = 0; i < TEXT_KEYS.length; i += 1) {
+        const part = textOf(value[TEXT_KEYS[i]]);
+        if (part) return part;
+      }
+      const keys = Object.keys(value);
+      for (let i = 0; i < keys.length; i += 1) {
+        const part = textOf(value[keys[i]]);
+        if (part) return part;
+      }
+    }
+    return "";
+  }
 
   function clean(value, limit) {
-    let text = String(value == null ? "" : value).replace(CONTROL, " ").replace(SPACES, " ").trim();
+    let text = String(textOf(value)).replace(CONTROL, " ").replace(SPACES, " ").trim();
+    let guard = 0;
+    while (guard < 4 && (LEADING_MARK.test(text) || LEADING_BULLET.test(text))) {
+      text = text.replace(LEADING_MARK, "").replace(LEADING_BULLET, "").trim();
+      guard += 1;
+    }
     if (text.length > limit) {
       let cut = text.slice(0, limit);
       const space = cut.lastIndexOf(" ");
@@ -202,6 +234,7 @@
     LIMITS: LIMITS,
     clean: clean,
     cleanList: cleanList,
+    textOf: textOf,
     normalize: normalize,
     demo: demo,
     todayRu: todayRu,

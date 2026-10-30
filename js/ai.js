@@ -115,6 +115,10 @@
     }
   }
 
+  function asText(value) {
+    return Forma.textOf ? Forma.textOf(value) : String(value == null ? "" : value);
+  }
+
   function documentWeight(doc) {
     const sections = doc && Array.isArray(doc.sections) ? doc.sections : [];
     let filled = 0;
@@ -125,13 +129,13 @@
       const bullets = Array.isArray(section.bullets) ? section.bullets : [];
       const hasText =
         paragraphs.some(function (part) {
-          return String(part || "").trim().length > 40;
+          return asText(part).trim().length > 40;
         }) ||
         bullets.length >= 3 ||
         Boolean(section.table);
       if (section.heading && hasText) filled += 1;
       paragraphs.concat(bullets).forEach(function (part) {
-        chars += String(part || "").length;
+        chars += asText(part).length;
       });
     });
     return { filled: filled, chars: chars };

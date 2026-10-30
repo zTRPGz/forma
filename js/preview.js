@@ -177,10 +177,12 @@
 
   function docPage(pageNumber, first) {
     const page = node("div", "doc-page" + (first ? " doc-page--first" : ""));
+    const sheet = node("div", "doc-page-sheet");
     const body = node("div", "doc-page-body");
+    page.append(sheet);
 
     if (first) {
-      page.append(body);
+      sheet.append(body);
       return { page: page, body: body };
     }
 
@@ -188,24 +190,34 @@
     head.append(node("span", "doc-page-brand", "FORMA"));
     head.append(node("span", "doc-page-label", " · документ"));
 
-    page.append(head, body, node("div", "doc-page-foot", String(pageNumber)));
+    sheet.append(head, body, node("div", "doc-page-foot", String(pageNumber)));
     return { page: page, body: body };
   }
 
   function docx(doc) {
     const root = node("div", "doc-preview");
+    const innerWidth = DOC.width - DOC.padX * 2;
+    const meta = metaLine(doc);
+    const titleHeight =
+      lineCount(doc.title, 26) * 35 + (doc.subtitle ? 28 : 0) + (meta ? 56 : 20);
+    const pages = paginate(
+      docBlocks(doc, innerWidth),
+      DOC.bodyLimit,
+      Math.max(240, DOC.bodyLimit - titleHeight - 36)
+    );
 
     const first = docPage(1, true);
     const block = node("div", "doc-title-block");
     block.append(node("p", "doc-title", doc.title));
     if (doc.subtitle) block.append(node("p", "doc-subtitle", doc.subtitle));
-    const meta = metaLine(doc);
     if (meta) block.append(node("p", "doc-meta", meta));
     first.body.append(block);
+    (pages[0] || []).forEach(function (item) {
+      first.body.append(item.make());
+    });
     root.append(first.page);
 
-    const innerWidth = DOC.width - DOC.padX * 2;
-    paginate(docBlocks(doc, innerWidth), DOC.bodyLimit).forEach(function (blocks, index) {
+    pages.slice(1).forEach(function (blocks, index) {
       const page = docPage(index + 2, false);
       blocks.forEach(function (item) {
         page.body.append(item.make());
@@ -220,12 +232,14 @@
 
   function pdfPage(pageNumber) {
     const page = node("div", "doc-page pdf-page");
+    const sheet = node("div", "doc-page-sheet");
     const head = node("div", "doc-page-head");
     head.append(node("span", "doc-page-brand", "FORMA"));
     head.append(node("span", "doc-page-label", " · аналитическая записка"));
 
     const body = node("div", "doc-page-body");
-    page.append(head, body, node("div", "doc-page-foot", String(pageNumber)));
+    sheet.append(head, body, node("div", "doc-page-foot", String(pageNumber)));
+    page.append(sheet);
     return { page: page, body: body };
   }
 
