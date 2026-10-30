@@ -421,6 +421,46 @@
     }
   }
 
+  function pptxFinal(pptx, RECT, doc, T) {
+    const slide = pptx.addSlide();
+    slide.background = { color: T.navy };
+    pptxRect(slide, RECT, 0, 0, 0.16, PPT_H, T.accent);
+    pptxText(slide, PPT_M, 0.62, 5, 0.4, "FORMA", {
+      fontFace: T.bodyFont,
+      fontSize: 11,
+      bold: true,
+      color: T.accent,
+    }, T);
+
+    const title = doc.title;
+    const titleSize = title.length <= 55 ? 40 : title.length <= 90 ? 32 : 27;
+    pptxText(slide, PPT_M, 2.2, PPT_CONTENT_W, 2.05, title, {
+      fontFace: T.headFont,
+      fontSize: titleSize,
+      bold: true,
+      color: WHITE,
+      lineSpacingMultiple: 0.98,
+      fit: "shrink",
+    }, T);
+
+    pptxRect(slide, RECT, PPT_M, 4.55, 1.3, 0.06, T.accent);
+
+    if (doc.subtitle) {
+      pptxText(slide, PPT_M, 4.86, PPT_CONTENT_W, 0.6, doc.subtitle, {
+        fontSize: 16,
+        color: T.light,
+      }, T);
+    }
+
+    const meta = metaLine(doc);
+    if (meta) {
+      pptxText(slide, PPT_M, 6.6, PPT_CONTENT_W, 0.36, meta, {
+        fontSize: 11,
+        color: T.meta,
+      }, T);
+    }
+  }
+
   function pptxHeading(slide, RECT, text, T) {
     const size = text.length <= 42 ? 30 : text.length <= 70 ? 25 : 22;
     pptxText(slide, PPT_M, 0.62, PPT_CONTENT_W, 0.95, text, {
@@ -448,6 +488,33 @@
     }, T);
   }
 
+  function pptxPhoto(slide, RECT, T) {
+    const w = 3.45;
+    const h = 4.6;
+    const x = PPT_W - PPT_M - w;
+    const y = 1.98;
+    slide.addShape(RECT, {
+      x: x,
+      y: y,
+      w: w,
+      h: h,
+      fill: { color: T.alt },
+      line: { color: T.rule, width: 1.25, dashType: "dash" },
+    });
+    pptxText(slide, x, y + h / 2 - 0.48, w, 0.3, "ФОТО", {
+      fontSize: 10.5,
+      bold: true,
+      color: T.muted,
+      align: "center",
+      charSpacing: 1.5,
+    }, T);
+    pptxText(slide, x, y + h / 2 - 0.12, w, 0.3, "место для изображения", {
+      fontSize: 8.5,
+      color: T.muted,
+      align: "center",
+    }, T);
+  }
+
   function pptxContentSlide(pptx, RECT, section, page, T) {
     const slide = pptx.addSlide();
     pptxHeading(slide, RECT, section.heading, T);
@@ -460,19 +527,19 @@
       total += item.length;
     });
     const size =
-      total <= 200
+      total <= 260
         ? 20
-        : total <= 340
+        : total <= 420
         ? 17
-        : total <= 520
+        : total <= 650
+        ? 16
+        : total <= 900
         ? 15
-        : total <= 800
-        ? 13
-        : total <= 1200
-        ? 12
+        : total <= 1300
+        ? 14
         : total <= 1800
-        ? 11
-        : 10;
+        ? 12.5
+        : 11;
     const paragraphGap = size >= 15 ? 14 : 9;
     const bulletGap = size >= 15 ? 11 : 7;
 
@@ -506,7 +573,7 @@
     slide.addText(runs, {
       x: PPT_M,
       y: 1.98,
-      w: PPT_CONTENT_W,
+      w: PPT_CONTENT_W - 3.9,
       h: 4.8,
       margin: 0,
       valign: "top",
@@ -515,6 +582,7 @@
       breakLine: false,
     });
 
+    pptxPhoto(slide, RECT, T);
     pptxFooter(slide, RECT, page, T);
   }
 
@@ -641,6 +709,7 @@
       }
     });
 
+    pptxFinal(pptx, RECT, doc, T);
     return pptx.write({ outputType: isNode ? "nodebuffer" : "blob" });
   }
 

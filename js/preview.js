@@ -350,13 +350,20 @@
   }
 
   function bodySize(total) {
-    if (total <= 200) return 20;
-    if (total <= 340) return 17;
-    if (total <= 520) return 15;
-    if (total <= 800) return 13;
-    if (total <= 1200) return 12;
-    if (total <= 1800) return 11;
-    return 10;
+    if (total <= 260) return 20;
+    if (total <= 420) return 17;
+    if (total <= 650) return 16;
+    if (total <= 900) return 15;
+    if (total <= 1300) return 14;
+    if (total <= 1800) return 12.5;
+    return 11;
+  }
+
+  function pptxPhoto() {
+    const photo = node("div", "slide-photo");
+    photo.append(node("span", "slide-photo-mark", "ФОТО"));
+    photo.append(node("span", "slide-photo-hint", "место для изображения"));
+    return photo;
   }
 
   function pptxContentSlide(section, page) {
@@ -386,6 +393,7 @@
     }
 
     slide.append(body);
+    slide.append(pptxPhoto());
     slideFooter(page).forEach(function (element) {
       slide.append(element);
     });
@@ -436,6 +444,26 @@
     return slide;
   }
 
+  function pptxFinal(doc) {
+    const slide = node("div", "slide slide--cover slide--final");
+    slide.append(node("div", "slide-bar"));
+    slide.append(node("div", "slide-brand", "FORMA"));
+
+    const title = node("p", "slide-cover-title", doc.title);
+    const length = doc.title.length;
+    title.style.fontSize = (length <= 55 ? 40 : length <= 90 ? 32 : 27) * PT + "cqw";
+    slide.append(title);
+
+    slide.append(node("div", "slide-cover-rule"));
+
+    if (doc.subtitle) slide.append(node("p", "slide-cover-subtitle", doc.subtitle));
+
+    const meta = metaLine(doc);
+    if (meta) slide.append(node("p", "slide-cover-meta", meta));
+
+    return slide;
+  }
+
   function pptx(doc) {
     const root = node("div", "slides-preview");
     applyTheme(root, doc);
@@ -453,6 +481,7 @@
       }
     });
 
+    root.append(pptxFinal(doc));
     return root;
   }
 

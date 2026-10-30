@@ -1603,6 +1603,10 @@ textarea:focus {
   background: linear-gradient(140deg, var(--pv-cover, #16243a) 0%, var(--pv-cover-2, #1f3149) 100%);
 }
 
+.slide--final {
+  background: var(--pv-cover, #16243a);
+}
+
 .slide-bar {
   position: absolute;
   top: 0;
@@ -1692,9 +1696,36 @@ textarea:focus {
   position: absolute;
   top: 14.85cqw;
   left: 6.75cqw;
-  width: 86.5cqw;
+  width: 57.25cqw;
   height: 36cqw;
   overflow: hidden;
+}
+
+.slide-photo {
+  position: absolute;
+  top: 14.85cqw;
+  left: 67.37cqw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2cqw;
+  width: 25.88cqw;
+  height: 34.5cqw;
+  background: var(--pv-alt, #f3ede4);
+  border: 1px dashed var(--rule);
+  color: var(--muted);
+  text-align: center;
+}
+
+.slide-photo-mark {
+  font-size: 1.09cqw;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.slide-photo-hint {
+  font-size: 0.885cqw;
 }
 
 .slide-p {

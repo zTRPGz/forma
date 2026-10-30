@@ -32,7 +32,7 @@
   const FORMAT_BRIEF = {
     docx: "Деловой документ из 4–6 разделов: цель и контекст, затем шаги, роли, сроки и риски. Таблица уместна для плана или сравнения вариантов. Объём — 1800–3000 знаков текста.",
     pdf: "Аналитическая записка из 4–6 разделов: проблема, наблюдения, выводы и рекомендации. Тон сдержанный, выводы проверяемые. Объём — 1500–2500 знаков текста.",
-    pptx: "Презентация: 4–6 разделов-слайдов, в каждом 2–4 коротких пункта до 15 слов; абзацы короткие, не больше одного на слайд. Объём — 700–1200 знаков: слайды не должны быть перегружены текстом.",
+    pptx: "Презентация по сюжету: обложка с темой, затем содержательные слайды с пунктами и финальный слайд с темой. В каждом разделе вводный абзац 180–240 знаков и 4–5 пунктов по 10–18 слов: подробно, но читаемо. Объём — 1800–3000 знаков.",
   };
 
   function maxTokensFor(format, options) {
@@ -45,19 +45,19 @@
     let brief = FORMAT_BRIEF[format] || "";
     if (format === "pptx" && options && options.slides) {
       const slides = options.slides;
-      const content = slides - 1;
+      const content = Math.max(1, slides - 2);
       brief =
         "Презентация ровно на " +
         slides +
-        " слайдов, включая титульный: " +
+        " слайдов: обложка с темой, затем " +
         content +
-        " содержательных. Верни ровно " +
+        " содержательных слайдов и финальный слайд с темой. Верни ровно " +
         content +
-        " разделов — по одному слайду на раздел. Таблицы не используй. В каждом разделе 2–4 коротких пункта до 15 слов; абзац не больше одного, до 300 знаков. Объём — " +
-        Math.round(content * 130) +
+        " разделов — по одному содержательному слайду на раздел. Таблицы не используй. В каждом разделе один вводный абзац 180–240 знаков и 4–5 пунктов по 10–18 слов: каждый пункт раскрывает мысль, а не обозначает её. Объём — " +
+        Math.round(content * 450) +
         "–" +
-        Math.round(content * 220) +
-        " знаков: слайды не должны быть перегружены текстом.";
+        Math.round(content * 750) +
+        " знаков.";
     }
     return [
       'Формат: {"title": "…", "subtitle": "…", "author": "", "sections": [',
@@ -215,12 +215,12 @@
   function isThin(doc, format, options) {
     const weight = documentWeight(doc);
     const targetSections =
-      format === "pptx" && options && options.slides ? Math.max(2, options.slides - 1) : 4;
+      format === "pptx" && options && options.slides ? Math.max(1, options.slides - 2) : 4;
     const minChars =
       format === "pptx"
         ? options && options.slides
-          ? Math.max(350, Math.min(900, targetSections * 80))
-          : 500
+          ? Math.max(600, Math.min(2600, targetSections * 300))
+          : 900
         : 900;
     return weight.filled < targetSections || weight.chars < minChars;
   }
@@ -269,11 +269,13 @@
 
   function expansionPrompt(format, options) {
     if (format === "pptx" && options && options.slides) {
-      const content = options.slides - 1;
+      const content = Math.max(1, options.slides - 2);
       return (
         "Содержания слишком мало: нужно ровно " +
         content +
-        " разделов — по одному слайду на раздел, без таблиц. В каждом разделе 2–4 конкретных пункта до 15 слов. Расширь презентацию и верни полный JSON по схеме из первого сообщения, без пояснений."
+        " содержательных разделов — по одному слайду на раздел, без таблиц. " +
+        "В каждом разделе вводный абзац 180–240 знаков и 4–5 пунктов по 10–18 слов: пункты должны быть развёрнутыми, с действием и результатом, а не короткими ярлыками. " +
+        "Расширь презентацию и верни полный JSON по схеме из первого сообщения, без пояснений."
       );
     }
     return "Содержания слишком мало: нужно 4–6 разделов с конкретикой — действиями, сроками, ответственными и рисками. В каждом разделе 1–3 абзаца по 400–700 знаков. Расширь документ и верни полный JSON по схеме из первого сообщения, без пояснений.";
@@ -301,7 +303,7 @@
   }
 
   async function topUpSections(doc, options, messages, jsonMode, signal) {
-    const target = Math.max(1, (options && options.slides ? options.slides : 6) - 1);
+    const target = Math.max(1, (options && options.slides ? options.slides : 6) - 2);
     cleanSections(doc);
     if (sectionCount(doc) >= target) return doc;
     if (!Array.isArray(doc.sections)) doc.sections = [];
@@ -322,14 +324,14 @@
           ".",
         existing.length ? "Уже заняты темы: «" + existing.join("», «") + "»." : "",
         "Добавь ровно " + missing + " новых разделов на ту же тему, не повторяя существующие.",
-        'Верни строго один JSON-объект вида {"sections":[{"heading":"…","paragraphs":[],"bullets":["…","…"]}]} — только новые разделы, без таблиц. В каждом разделе 2–4 пункта до 15 слов. Без пояснений, markdown и обёртки из ```.',
+        'Верни строго один JSON-объект вида {"sections":[{"heading":"…","paragraphs":["…"],"bullets":["…","…"]}]} — только новые разделы, без таблиц. В каждом разделе вводный абзац 180–240 знаков и 4–5 пунктов по 10–18 слов. Без пояснений, markdown и обёртки из ```.',
       ]
         .filter(Boolean)
         .join("\n\n");
 
       const answer = await complete(
         messages.concat([{ role: "user", content: prompt }]),
-        { json: jsonMode, temperature: 0.5, maxTokens: 1600 },
+        { json: jsonMode, temperature: 0.5, maxTokens: 1800 },
         signal
       );
       const fresh = cleanSections(parseContent(answer.content));
@@ -380,7 +382,7 @@
   }
 
   async function buildDeck(topic, options, signal) {
-    const target = Math.max(1, options.slides - 1);
+    const target = Math.max(1, options.slides - 2);
     const system = { role: "system", content: SYSTEM_PROMPT };
     const lead = "Тема: «" + topic + "»\n\n";
 
@@ -393,9 +395,9 @@
             lead +
             "Нужен план презентации ровно на " +
             options.slides +
-            " слайдов, включая титульный: " +
+            " слайдов: обложка с темой, " +
             target +
-            " содержательных разделов.\n" +
+            " содержательных слайдов и финальный слайд с темой.\n" +
             'Верни только JSON вида {"title":"…","subtitle":"…","sections":[{"heading":"…"}]} — ровно ' +
             target +
             " объектов в sections, в каждом только heading. Без bullets, paragraphs и table. Заголовки до 8 слов, разные аспекты темы, без повторов, в логическом порядке. Без пояснений и markdown.",
@@ -442,6 +444,24 @@
 
     const filled = new Map();
 
+    function storeItem(key, item) {
+      if (!key || !item || filled.has(key)) return;
+      const paragraphs = (Array.isArray(item.paragraphs) ? item.paragraphs : [])
+        .map(function (part) {
+          return String(part || "").trim();
+        })
+        .filter(Boolean)
+        .slice(0, 2);
+      const bullets = (Array.isArray(item.bullets) ? item.bullets : [])
+        .map(function (part) {
+          return String(part || "").trim();
+        })
+        .filter(Boolean)
+        .slice(0, 5);
+      if (!paragraphs.length && !bullets.length) return;
+      filled.set(key, { paragraphs: paragraphs, bullets: bullets });
+    }
+
     async function fillChunk(chunk) {
       const response = await askJson(
         [
@@ -452,34 +472,27 @@
               lead +
               "Разделы презентации: «" +
               chunk.join("», «") +
-              "».\nДля каждого заголовка напиши 2–4 коротких пункта до 15 слов; заголовки оставь дословно. Без таблиц.\n" +
-              'Верни только JSON {"sections":[{"heading":"…","bullets":["…","…"]}]} — по одному объекту на каждый заголовок, в том же порядке. Без пояснений и markdown.',
+              "».\nДля каждого заголовка напиши вводный абзац 180–240 знаков и 4–5 конкретных пунктов по 10–18 слов; заголовки оставь дословно. Без таблиц.\n" +
+              'Верни только JSON {"sections":[{"heading":"…","paragraphs":["…"],"bullets":["…","…"]}]} — по одному объекту на каждый заголовок, в том же порядке. Без пояснений и markdown.',
           },
         ],
-        { temperature: 0.6, maxTokens: 1400 },
+        { temperature: 0.6, maxTokens: 2200 },
         signal
       );
       const items = usableSections(response).filter(function (item) {
-        return Array.isArray(item.bullets) && item.bullets.length;
+        return (
+          (Array.isArray(item.bullets) && item.bullets.length) ||
+          (Array.isArray(item.paragraphs) && item.paragraphs.length)
+        );
       });
 
       const paired = Math.min(items.length, chunk.length);
       for (let index = 0; index < paired; index += 1) {
-        const key = headingKey(chunk[index]);
-        if (!key || filled.has(key)) continue;
-        const bullets = items[index].bullets.filter(function (bullet) {
-          return String(bullet || "").trim();
-        });
-        if (bullets.length) filled.set(key, bullets);
+        storeItem(headingKey(chunk[index]), items[index]);
       }
 
       items.slice(paired).forEach(function (item) {
-        const key = headingKey(item.heading);
-        if (!key || filled.has(key)) return;
-        const bullets = item.bullets.filter(function (bullet) {
-          return String(bullet || "").trim();
-        });
-        if (bullets.length) filled.set(key, bullets);
+        storeItem(headingKey(item.heading), item);
       });
     }
 
@@ -512,10 +525,11 @@
         return filled.has(headingKey(heading));
       })
       .map(function (heading) {
+        const content = filled.get(headingKey(heading));
         return {
           heading: heading,
-          paragraphs: [],
-          bullets: filled.get(headingKey(heading)),
+          paragraphs: content.paragraphs,
+          bullets: content.bullets,
           table: null,
         };
       });
@@ -531,7 +545,8 @@
     };
   }
 
-  function repairPrompt(answer) {    const draft = String(answer.content || "").trim().slice(0, 2000);
+  function repairPrompt(answer) {
+    const draft = String(answer.content || "").trim().slice(0, 2000);
     const lines = [
       "Предыдущий ответ не удалось разобрать как JSON" +
         (answer.finish === "length" ? " — он оборван по лимиту длины" : "") +
@@ -616,7 +631,7 @@
           return null;
         });
         if (deck) {
-          const target = options.slides - 1;
+          const target = options.slides - 2;
           cleanSections(deck);
           if (sectionCount(deck) >= target) return deck;
           const topped = await topUpSections(deck, options, messages, true, controller.signal).catch(
@@ -692,7 +707,8 @@
         if (
           fuller &&
           fuller.sections &&
-          (sectionCount(fuller) > sectionCount(parsed) || !isThin(fuller, format, options))
+          (sectionCount(fuller) > sectionCount(parsed) ||
+            documentWeight(fuller).chars > documentWeight(parsed).chars)
         ) {
           parsed = fuller;
         }
@@ -700,7 +716,7 @@
 
       if (format === "pptx" && options && options.slides) {
         parsed = await topUpSections(parsed, options, messages, jsonMode, controller.signal);
-        if (sectionCount(parsed) < options.slides - 1) {
+        if (sectionCount(parsed) < options.slides - 2) {
           const error = new Error("ИИ вернул меньше разделов, чем нужно для выбранного числа слайдов.");
           error.code = "short-deck";
           throw error;

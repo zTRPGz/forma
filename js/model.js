@@ -95,7 +95,7 @@
         : 0;
     const allowTable = !(fmt === "pptx" && slides);
     const sections = [];
-    const maxSections = slides ? Math.max(1, slides - 1) : LIMITS.sections;
+    const maxSections = slides ? Math.max(1, slides - 2) : LIMITS.sections;
     const rawSections = Array.isArray(source.sections) ? source.sections.slice(0, maxSections) : [];
 
     rawSections.forEach(function (item) {
@@ -148,7 +148,7 @@
       date: clean(source.date, 40) || todayRu(),
       sections: sections,
       format: fmt,
-      slides: slides ? Math.min(slides, sections.length + 1) : null,
+      slides: slides ? Math.min(slides, sections.length + 2) : null,
       theme: settings.theme || "paper",
     };
   }
@@ -343,7 +343,7 @@
         options && Number.isFinite(options.slides)
           ? Math.min(20, Math.max(2, Math.floor(options.slides)))
           : 6;
-      sections.length = Math.min(sections.length, Math.max(1, slides - 1));
+      sections.length = Math.min(sections.length, Math.max(1, slides - 2));
     } else {
       sections.length = Math.min(sections.length, 6);
     }
