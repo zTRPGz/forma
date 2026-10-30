@@ -2,6 +2,9 @@
 
 const https = require("https");
 const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
+const tls = require("tls");
 
 const OAUTH_HOST = "ngw.devices.sberbank.ru";
 const OAUTH_PATH = "/api/v2/oauth";
@@ -11,11 +14,17 @@ const SCOPE = process.env.GIGACHAT_SCOPE || "GIGACHAT_API_PERS";
 const MODEL = "GigaChat-2";
 const MAX_TOKENS = 4096;
 
+const CERT_DIR = path.join(__dirname, "certs");
+const TRUSTED_CA = ["russian_trusted_root_ca_pem.crt", "russian_trusted_sub_ca_pem.crt"]
+  .map(function (name) {
+    return fs.readFileSync(path.join(CERT_DIR, name));
+  })
+  .concat(tls.rootCertificates);
+
 const SITE_ORIGIN = "https://ztrpgz.github.io";
 const ALLOWED_ORIGIN = [
   /^https:\/\/forma-docs\.duckdns\.org$/i,
-  /^https:\/\/[a-z0-9-]+\.netlify\.app$/i,
-  /^https:\/\/[a-z0-9-]+\.vercel\.app$/i,
+  /^https:\/\/forma(?:-[a-z0-9]+)*-trpg4\.vercel\.app$/i,
   /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i,
 ];
 
@@ -32,7 +41,7 @@ function authKey() {
 function request(options, body) {
   return new Promise(function (resolve, reject) {
     const req = https.request(
-      Object.assign({ rejectUnauthorized: false, family: 4 }, options),
+      Object.assign({ ca: TRUSTED_CA, minVersion: "TLSv1.2", family: 4 }, options),
       function (res) {
         let data = "";
         res.setEncoding("utf8");

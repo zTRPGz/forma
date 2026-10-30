@@ -6,7 +6,6 @@
   --ink: #1c2733;
   --ink-soft: #47515e;
   --navy: #16243a;
-  --navy-light: #22344e;
   --accent: #b45309;
   --accent-dark: #95440a;
   --muted: #6f6355;
@@ -18,8 +17,6 @@
   --sans: "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono: "Cascadia Mono", "SF Mono", Consolas, "Courier New", monospace;
   --radius-lg: 22px;
-  --radius: 16px;
-  --radius-sm: 10px;
   --shadow-panel: 0 2px 4px rgba(22, 36, 58, 0.04), 0 34px 70px -46px rgba(22, 36, 58, 0.5);
   --max: 1120px;
 }

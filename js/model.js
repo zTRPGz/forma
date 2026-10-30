@@ -375,13 +375,10 @@
   }
 
   Object.assign(Forma, {
-    LIMITS: LIMITS,
     clean: clean,
-    cleanList: cleanList,
     textOf: textOf,
     normalize: normalize,
     demo: demo,
-    todayRu: todayRu,
     slugify: slugify,
   });
 })(typeof window !== "undefined" ? window : globalThis);

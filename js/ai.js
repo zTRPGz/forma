@@ -766,7 +766,6 @@
 
   Object.assign(Forma, {
     ai: {
-      apiBase: apiBase,
       health: checkHealth,
       generateContent: generateContent,
     },
