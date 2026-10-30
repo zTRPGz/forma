@@ -110,6 +110,12 @@ body {
   background: #edf5f0;
 }
 
+.badge--demo {
+  color: #7a5414;
+  border-color: #ecd9b4;
+  background: #fdf6e8;
+}
+
 .hero {
   padding: 46px 0 34px;
   border-bottom: 1px solid var(--rule);
@@ -371,6 +377,34 @@ textarea:focus {
 }
 
 .result-note[hidden] {
+  display: none;
+}
+
+.result-actions {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.retry {
+  padding: 9px 14px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.retry:hover {
+  background: #f3ece1;
+}
+
+.retry[hidden] {
   display: none;
 }
 

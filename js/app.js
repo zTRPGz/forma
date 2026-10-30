@@ -22,6 +22,7 @@
   const resultMeta = document.getElementById("result-meta");
   const resultNote = document.getElementById("result-note");
   const downloadLink = document.getElementById("download");
+  const retryButton = document.getElementById("retry");
   const outlineList = document.getElementById("outline-list");
   const preview = document.getElementById("preview");
   const badge = document.getElementById("llm-badge");
@@ -61,10 +62,19 @@
     }
   }
 
-  function setBadge() {
-    badge.textContent = "ИИ · GigaChat-2";
-    badge.title = "Содержание собирает GigaChat на сервере FORMA.";
-    badge.classList.add("badge--live");
+  function setBadge(state, reason) {
+    badge.classList.toggle("badge--live", state === "live");
+    badge.classList.toggle("badge--demo", state === "demo");
+    if (state === "live") {
+      badge.textContent = "ИИ · на связи";
+      badge.title = "GigaChat-2 отвечает с сервера FORMA.";
+    } else if (state === "demo") {
+      badge.textContent = "ИИ · демо-режим";
+      badge.title = reason || "Сервис ИИ недоступен — документы собираются в демо-режиме.";
+    } else {
+      badge.textContent = "ИИ · GigaChat-2";
+      badge.title = "Содержание собирает GigaChat на сервере FORMA.";
+    }
   }
 
   function applyFormatUI() {
@@ -100,6 +110,7 @@
 
   function hideResult() {
     result.hidden = true;
+    retryButton.hidden = true;
     preview.className = "preview";
     preview.replaceChildren();
     downloadLink.removeAttribute("href");
@@ -170,6 +181,7 @@
   });
 
   generateButton.addEventListener("click", generate);
+  retryButton.addEventListener("click", generate);
 
   window.addEventListener("beforeunload", function () {
     if (lastUrl) URL.revokeObjectURL(lastUrl);
@@ -220,7 +232,13 @@
       const filename = "forma-" + Forma.slugify(generated.doc.title) + "." + format;
 
       renderResult(generated, url, filename, seconds);
-      setStatus("Файл готов.");
+      if (generated.note) {
+        setBadge("demo", generated.note);
+        setStatus("Демо-документ готов — ИИ не ответил.");
+      } else {
+        setBadge("live");
+        setStatus("Файл готов.");
+      }
     } catch (error) {
       setStatus(
         "Не удалось собрать файл: " + (error && error.message ? error.message : "неизвестная ошибка."),
@@ -242,6 +260,7 @@
 
     resultNote.hidden = !generated.note;
     resultNote.textContent = generated.note || "";
+    retryButton.hidden = !generated.note;
 
     downloadLink.href = url;
     downloadLink.download = filename;
@@ -297,7 +316,11 @@
   }
 
   format = readStoredFormat();
-  setBadge();
+  setBadge("checking");
   applyFormatUI();
   updateCounter();
+
+  Forma.ai.health().then(function (result) {
+    setBadge(result.ok ? "live" : "demo", result.reason);
+  });
 })();

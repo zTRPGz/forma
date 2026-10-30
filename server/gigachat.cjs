@@ -13,6 +13,7 @@ const MAX_TOKENS = 4096;
 
 const SITE_ORIGIN = "https://ztrpgz.github.io";
 const ALLOWED_ORIGIN = [
+  /^https:\/\/forma-docs\.duckdns\.org$/i,
   /^https:\/\/[a-z0-9-]+\.netlify\.app$/i,
   /^https:\/\/[a-z0-9-]+\.vercel\.app$/i,
   /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i,
@@ -68,7 +69,7 @@ async function getToken(force) {
         port: 9443,
         path: OAUTH_PATH,
         method: "POST",
-        timeout: 30000,
+        timeout: 10000,
         headers: {
           Authorization: "Basic " + key,
           RqUID: crypto.randomUUID(),
@@ -92,6 +93,13 @@ async function getToken(force) {
   return token;
 }
 
+function sendChat(headers, body, timeout) {
+  return request(
+    { host: API_HOST, path: API_PATH, method: "POST", timeout: timeout, headers: headers },
+    body
+  );
+}
+
 async function callChat(payload) {
   const access = await getToken(false);
   const body = JSON.stringify(payload);
@@ -104,22 +112,23 @@ async function callChat(payload) {
 
   let response;
   try {
-    response = await request(
-      { host: API_HOST, path: API_PATH, method: "POST", timeout: 60000, headers: headers },
-      body
-    );
+    response = await sendChat(headers, body, 40000);
   } catch (error) {
-    throw new Error("GigaChat недоступен: " + error.message);
+    if (String(error.message) === "timeout") {
+      throw new Error("GigaChat не ответил за 40 секунд.");
+    }
+    try {
+      response = await sendChat(headers, body, 15000);
+    } catch (retryError) {
+      throw new Error("GigaChat недоступен: " + retryError.message);
+    }
   }
 
   if (response.status === 401) {
     token = "";
     const fresh = await getToken(true);
     headers.Authorization = "Bearer " + fresh;
-    response = await request(
-      { host: API_HOST, path: API_PATH, method: "POST", timeout: 60000, headers: headers },
-      body
-    );
+    response = await sendChat(headers, body, 25000);
   }
 
   return response;

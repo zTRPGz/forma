@@ -274,6 +274,30 @@
     }
   }
 
+  async function checkHealth() {
+    const controller = new AbortController();
+    const timer = setTimeout(function () {
+      controller.abort();
+    }, 6000);
+
+    try {
+      const response = await fetch(apiBase() + "/health", {
+        method: "GET",
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!response.ok) return { ok: false, reason: friendlyError(response.status, "") };
+      const data = await response.json();
+      if (!data || data.ok !== true) return { ok: false, reason: "Сервис ИИ ответил неожиданно." };
+      if (!data.key) return { ok: false, reason: "На сервере не настроен ключ GigaChat." };
+      return { ok: true, model: String(data.model || "") };
+    } catch (error) {
+      return { ok: false, reason: "Не удалось связаться с сервисом ИИ." };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async function generateContent(topic, format) {
     const demoDoc = Forma.normalize(Forma.demo(topic, format), format);
 
@@ -304,6 +328,7 @@
   Object.assign(Forma, {
     ai: {
       apiBase: apiBase,
+      health: checkHealth,
       generateContent: generateContent,
     },
   });

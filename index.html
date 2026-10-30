@@ -11,6 +11,7 @@
   <meta property="og:locale" content="ru_RU">
   <title>Forma — документы из одной фразы</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2316243a'/%3E%3Crect x='24' y='24' width='16' height='16' fill='%23b45309' transform='rotate(45 32 32)'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://forma-docs.duckdns.org" crossorigin>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -84,7 +85,10 @@
             <p id="result-meta" class="result-meta"></p>
             <p id="result-note" class="result-note" hidden></p>
           </div>
-          <a id="download" class="download" download>Скачать файл</a>
+          <div class="result-actions">
+            <button type="button" id="retry" class="retry" hidden>Попробовать снова</button>
+            <a id="download" class="download" download>Скачать файл</a>
+          </div>
         </div>
         <div class="result-body">
           <div class="outline">
