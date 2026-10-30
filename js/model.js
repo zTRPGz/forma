@@ -50,6 +50,10 @@
     return now.getDate() + " " + MONTHS[now.getMonth()] + " " + now.getFullYear();
   }
 
+  function tidy(value) {
+    return String(value || "").replace(/\s*:$/, "").trim();
+  }
+
   function normalize(raw, fmt) {
     const source = raw && typeof raw === "object" ? raw : {};
     const sections = [];
@@ -57,7 +61,7 @@
 
     rawSections.forEach(function (item) {
       if (!item || typeof item !== "object") return;
-      const heading = clean(item.heading, LIMITS.heading);
+      const heading = tidy(clean(item.heading, LIMITS.heading));
       if (!heading) return;
 
       let table = null;
@@ -99,7 +103,7 @@
     }
 
     return {
-      title: clean(source.title, LIMITS.title) || "Без названия",
+      title: tidy(clean(source.title, LIMITS.title)) || "Без названия",
       subtitle: clean(source.subtitle, 120),
       author: clean(source.author, 80),
       date: clean(source.date, 40) || todayRu(),

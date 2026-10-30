@@ -17,15 +17,26 @@
   }
 
   const SYSTEM_PROMPT = [
-    "Ты редактор деловых документов. Пишешь по-русски ясно, конкретно и без канцелярита.",
-    "Ты собираешь структуру документа: заголовок, подзаголовок и 3–6 разделов.",
-    "В каждом разделе допустимы 1–3 абзаца, 0–6 пунктов списка и необязательная таблица.",
-    "Заголовок раздела — до 8 слов. Пункт списка — до 20 слов. Абзац — до 700 знаков.",
-    "Таблица: 2–4 столбца, до 6 строк, короткие ячейки. Таблицу добавляй только там, где она действительно помогает.",
-    "Не используй markdown, звёздочки, решётки, эмодзи и нумерацию внутри текста.",
-    "Не выдумывай статистику, даты и цитаты. Если данных нет — пиши качественно, но без ложных фактов.",
-    "Верни только корректный JSON без пояснений и без обёртки из ```.",
+    "Ты опытный редактор деловых документов на русском языке.",
+    "Пиши конкретно: действия, сроки, ответственные, критерии и риски. Без вводных фраз вроде «в современном мире», без канцелярита, клише и саморекламы.",
+    "Не выдумывай числа, даты, проценты, суммы, исследования и цитаты. Если точных данных нет, формулируй без числа: «сократит время подготовки отчётов», «заметно ускорит согласование». Заглушку «___» ставь только там, где без числа фраза теряет смысл. Никогда не подставляй правдоподобные цифры от себя.",
+    "Структура: заголовок документа до 10 слов, подзаголовок до 12 слов, 4–6 разделов с содержательными заголовками до 8 слов.",
+    "В разделе — 1–3 абзаца по 400–700 знаков каждый. Абзац — это 3–5 законченных предложений с конкретикой, а не набор коротких фраз.",
+    "Список — 3–6 пунктов, каждый пункт — законченная мысль до 20 слов. Таблица только там, где помогает сравнению или плану: 2–4 столбца, до 6 строк.",
+    "Каждый раздел раскрывает свою мысль: никаких повторов, пустых обещаний и общих слов.",
+    "Оформление: только чистый текст. Без markdown, звёздочек, решёток, эмодзи, нумерации внутри абзацев и подписей вида «Раздел 1».",
+    "Верни только корректный JSON без пояснений и без обёртки из ```. Не обрывай ответ: JSON должен быть полностью закрыт.",
   ].join(" ");
+
+  const FORMAT_BRIEF = {
+    docx: "Деловой документ: цель и контекст, затем шаги, роли, сроки и риски. Таблица уместна для плана или сравнения вариантов. Объём — 1800–3000 знаков текста.",
+    pdf: "Аналитическая записка: проблема, наблюдения, выводы и рекомендации. Тон сдержанный, выводы проверяемые. Объём — 1500–2500 знаков текста.",
+    pptx: "Презентация: 4–6 разделов-слайдов, в каждом 2–4 коротких пункта до 15 слов; абзацы короткие, не больше одного на слайд. Объём — 700–1200 знаков: слайды не должны быть перегружены текстом.",
+  };
+
+  function maxTokensFor(format) {
+    return format === "pptx" ? 3000 : MAX_TOKENS;
+  }
 
   function schemaHint(format) {
     return [
@@ -33,7 +44,7 @@
       '{"heading": "…", "paragraphs": ["…"], "bullets": ["…"], "table": {"headers": ["…"], "rows": [["…"]]}}',
       "]}",
       "Поле table необязательно: если таблица не нужна, не добавляй его вовсе.",
-      "Формат документа: " + FORMAT_NAMES[format] + ".",
+      "Формат документа: " + FORMAT_NAMES[format] + ". " + (FORMAT_BRIEF[format] || ""),
     ].join("\n");
   }
 
@@ -103,6 +114,34 @@
     }
   }
 
+  function documentWeight(doc) {
+    const sections = doc && Array.isArray(doc.sections) ? doc.sections : [];
+    let filled = 0;
+    let chars = 0;
+    sections.forEach(function (section) {
+      if (!section || typeof section !== "object") return;
+      const paragraphs = Array.isArray(section.paragraphs) ? section.paragraphs : [];
+      const bullets = Array.isArray(section.bullets) ? section.bullets : [];
+      const hasText =
+        paragraphs.some(function (part) {
+          return String(part || "").trim().length > 40;
+        }) ||
+        bullets.length >= 3 ||
+        Boolean(section.table);
+      if (section.heading && hasText) filled += 1;
+      paragraphs.concat(bullets).forEach(function (part) {
+        chars += String(part || "").length;
+      });
+    });
+    return { filled: filled, chars: chars };
+  }
+
+  function isThin(doc, format) {
+    const weight = documentWeight(doc);
+    const minChars = format === "pptx" ? 500 : 900;
+    return weight.filled < 4 || weight.chars < minChars;
+  }
+
   function textFromContent(content) {
     if (typeof content === "string") return content;
     if (Array.isArray(content)) {
@@ -127,11 +166,20 @@
   }
 
   function buildMessages(topic, format) {
+    const facts = /\d/.test(topic)
+      ? ""
+      : "\n\nВ теме не указано ни одного числа, поэтому в документе не должно быть процентов, сумм, статистики и сроков «через N дней» — только качественные формулировки.";
     return [
       { role: "system", content: SYSTEM_PROMPT },
       {
         role: "user",
-        content: "Тема: «" + topic + "»\n\nСобери документ на эту тему.\n\n" + schemaHint(format),
+        content:
+          "Тема: «" +
+          topic +
+          "»\n\nСобери документ на эту тему. Читатель — занятый руководитель: ему нужны суть, действия и риски, а не общие рассуждения." +
+          facts +
+          "\n\n" +
+          schemaHint(format),
       },
     ];
   }
@@ -214,16 +262,17 @@
       controller.abort();
     }, TIMEOUT_MS);
     const messages = buildMessages(topic, format);
+    const budget = maxTokensFor(format);
 
     try {
       let answer;
       let jsonMode = true;
       try {
-        answer = await complete(messages, { json: true, temperature: 0.7, maxTokens: MAX_TOKENS }, controller.signal);
+        answer = await complete(messages, { json: true, temperature: 0.6, maxTokens: budget }, controller.signal);
       } catch (error) {
         if (error.status !== 400 && error.status !== 422) throw error;
         jsonMode = false;
-        answer = await complete(messages, { json: false, temperature: 0.7, maxTokens: MAX_TOKENS }, controller.signal);
+        answer = await complete(messages, { json: false, temperature: 0.6, maxTokens: budget }, controller.signal);
       }
 
       let parsed = parseContent(answer.content);
@@ -247,7 +296,7 @@
         ]);
         const retry = await complete(
           retryMessages,
-          { json: jsonMode, temperature: 0.3, maxTokens: MAX_TOKENS },
+          { json: jsonMode, temperature: 0.3, maxTokens: budget },
           controller.signal
         );
         parsed = parseContent(retry.content);
@@ -266,6 +315,22 @@
         const error = new Error("ИИ вернул ответ не в формате JSON. Попробуйте сгенерировать ещё раз.");
         error.code = "bad-json";
         throw error;
+      }
+
+      if (isThin(parsed, format)) {
+        const expanded = await complete(
+          messages.concat([
+            {
+              role: "user",
+              content:
+                "Содержания слишком мало: нужно 4–6 разделов с конкретикой — действиями, сроками, ответственными и рисками. В каждом разделе 1–3 абзаца по 400–700 знаков. Расширь документ и верни полный JSON по схеме из первого сообщения, без пояснений.",
+            },
+          ]),
+          { json: jsonMode, temperature: 0.4, maxTokens: budget },
+          controller.signal
+        );
+        const fuller = parseContent(expanded.content);
+        if (fuller && !isThin(fuller, format)) parsed = fuller;
       }
 
       return parsed;

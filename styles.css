@@ -146,6 +146,45 @@ body {
   color: var(--muted);
 }
 
+.ideas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.ideas-label {
+  margin-right: 2px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.idea {
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+  background: rgba(255, 253, 249, 0.72);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.idea:hover {
+  color: var(--navy);
+  background: var(--card);
+  border-color: var(--navy);
+}
+
+.idea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .panel {
   margin-top: 34px;
   padding: 26px;
@@ -162,6 +201,7 @@ body {
 }
 
 .format {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -185,6 +225,17 @@ body {
   border-color: var(--navy);
   background: #f8f4ec;
   box-shadow: inset 0 0 0 1px var(--navy);
+}
+
+.format.is-active::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
 }
 
 .format-icon {
@@ -273,13 +324,14 @@ textarea:focus {
 }
 
 .cta {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   width: 100%;
   margin-top: 18px;
-  padding: 16px 22px;
+  padding: 16px 46px;
   font: inherit;
   font-size: 16px;
   font-weight: 600;
@@ -302,7 +354,21 @@ textarea:focus {
 
 .cta-format {
   font-weight: 400;
-  opacity: 0.62;
+  opacity: 0.75;
+}
+
+.cta-arrow {
+  position: absolute;
+  right: 20px;
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0.75;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.cta:hover:not(:disabled) .cta-arrow {
+  transform: translateX(3px);
+  opacity: 1;
 }
 
 .status {
@@ -310,6 +376,30 @@ textarea:focus {
   margin: 12px 0 0;
   font-size: 13.5px;
   color: var(--muted);
+}
+
+.status.is-busy::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  vertical-align: 1px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: forma-pulse 1s ease-in-out infinite;
+}
+
+@keyframes forma-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.75);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .status.is-error {
@@ -360,9 +450,19 @@ textarea:focus {
 }
 
 .result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin: 0;
   font-size: 12.5px;
   color: var(--muted);
+}
+
+.result-meta .chip {
+  padding: 3px 9px;
+  background: #f6f0e7;
+  border: 1px solid #e7ddce;
+  border-radius: 999px;
 }
 
 .result-note {
@@ -409,7 +509,11 @@ textarea:focus {
 }
 
 .download {
+  display: inline-flex;
   flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   padding: 12px 18px;
   font-size: 14px;
   font-weight: 600;
@@ -418,6 +522,12 @@ textarea:focus {
   background: var(--accent);
   border-radius: 10px;
   transition: background 0.18s ease;
+}
+
+.download-icon {
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.85;
 }
 
 .download:hover {
@@ -461,11 +571,16 @@ textarea:focus {
 }
 
 #outline-list .n {
-  min-width: 18px;
-  padding-top: 1px;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  place-items: center;
   font-family: var(--serif);
-  font-size: 12px;
-  color: var(--accent);
+  font-size: 10.5px;
+  color: var(--navy);
+  background: #efe7da;
+  border-radius: 50%;
 }
 
 #outline-list .d {

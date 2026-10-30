@@ -22,6 +22,7 @@
   const resultMeta = document.getElementById("result-meta");
   const resultNote = document.getElementById("result-note");
   const downloadLink = document.getElementById("download");
+  const downloadLabel = document.getElementById("download-label");
   const retryButton = document.getElementById("retry");
   const outlineList = document.getElementById("outline-list");
   const preview = document.getElementById("preview");
@@ -42,6 +43,7 @@
     busy = value;
     generateButton.disabled = value;
     generateButton.setAttribute("aria-busy", String(value));
+    statusLine.classList.toggle("is-busy", value);
     ctaText.textContent = value ? "Собираю…" : "Сгенерировать";
   }
 
@@ -145,6 +147,18 @@
       { once: true }
     );
   });
+
+  const ideasEl = document.getElementById("ideas");
+  if (ideasEl) {
+    ideasEl.addEventListener("click", function (event) {
+      const button = event.target.closest(".idea");
+      if (!button) return;
+      topic.value = button.dataset.topic || "";
+      updateCounter();
+      topic.focus();
+      Forma.deps.prefetch(format);
+    });
+  }
 
   formatsEl.addEventListener("keydown", function (event) {
     const keys = ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "Home", "End"];
@@ -256,7 +270,13 @@
     const parts = [NAMES[format], generated.provider];
     if (generated.model) parts.push(generated.model);
     parts.push(seconds.toFixed(1).replace(".", ",") + " с");
-    resultMeta.textContent = parts.join(" · ");
+    resultMeta.replaceChildren();
+    parts.forEach(function (part) {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.textContent = part;
+      resultMeta.append(chip);
+    });
 
     resultNote.hidden = !generated.note;
     resultNote.textContent = generated.note || "";
@@ -264,7 +284,7 @@
 
     downloadLink.href = url;
     downloadLink.download = filename;
-    downloadLink.textContent = "Скачать " + EXTS[format];
+    downloadLabel.textContent = "Скачать " + EXTS[format];
     downloadLink.setAttribute("aria-disabled", "false");
 
     outlineList.replaceChildren();
