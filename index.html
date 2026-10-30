@@ -12,7 +12,7 @@
   <title>Forma — документы из одной фразы</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2316243a'/%3E%3Crect x='24' y='24' width='16' height='16' fill='%23b45309' transform='rotate(45 32 32)'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://forma-docs.duckdns.org" crossorigin>
-  <link rel="stylesheet" href="./styles.css?v=20261031a">
+  <link rel="stylesheet" href="./styles.css?v=20261031b">
 </head>
 <body>
   <a class="skip-link" href="#main">Перейти к форме</a>
@@ -37,7 +37,7 @@
           <div class="hero-copy">
             <p class="eyebrow"><span class="eyebrow-mark" aria-hidden="true"></span>Word · PDF · PowerPoint</p>
             <h1>Один текст —<br><em>три формата.</em></h1>
-            <p class="lead">Выберите тип документа, опишите тему одной фразой — получите готовый файл в собственной вёрстке. Всё собирается в браузере.</p>
+            <p class="lead">Выберите формат и нажмите «Сгенерировать» — тему можно оставить пустой. Готовый файл в собственной вёрстке собирается в браузере.</p>
             <div class="ideas" id="ideas">
               <span class="ideas-label">Попробовать</span>
               <button type="button" class="idea" data-topic="онбординг новых сотрудников за первые две недели">онбординг сотрудников</button>
@@ -144,6 +144,9 @@
             <button type="button" class="seg-btn is-active" data-slides="6" role="radio" aria-checked="true">6</button>
             <button type="button" class="seg-btn" data-slides="8" role="radio" aria-checked="false">8</button>
             <button type="button" class="seg-btn" data-slides="10" role="radio" aria-checked="false">10</button>
+            <button type="button" class="seg-btn" data-slides="12" role="radio" aria-checked="false">12</button>
+            <button type="button" class="seg-btn" data-slides="16" role="radio" aria-checked="false">16</button>
+            <button type="button" class="seg-btn" data-slides="20" role="radio" aria-checked="false">20</button>
           </div>
           <span class="option-hint">включая титульный</span>
         </div>
@@ -165,7 +168,7 @@
             <label class="field-label" for="topic">О чём документ</label>
             <span class="counter"><span id="count">0</span>/300</span>
           </div>
-          <textarea id="topic" maxlength="300" rows="4" placeholder="Например: как выстроить онбординг новых сотрудников за первые две недели"></textarea>
+          <textarea id="topic" maxlength="300" rows="4" placeholder="Можно оставить пустым — подберём тему сами. Например: как выстроить онбординг новых сотрудников за первые две недели"></textarea>
         </div>
 
         <button type="button" id="generate" class="cta">
@@ -214,12 +217,12 @@
     </footer>
   </div>
 
-  <script src="./js/deps.js?v=20261031a"></script>
-  <script src="./js/model.js?v=20261031a"></script>
-  <script src="./js/themes.js?v=20261031a"></script>
-  <script src="./js/ai.js?v=20261031a"></script>
-  <script src="./js/renderers.js?v=20261031a"></script>
-  <script src="./js/preview.js?v=20261031a"></script>
-  <script src="./js/app.js?v=20261031a"></script>
+  <script src="./js/deps.js?v=20261031b"></script>
+  <script src="./js/model.js?v=20261031b"></script>
+  <script src="./js/themes.js?v=20261031b"></script>
+  <script src="./js/ai.js?v=20261031b"></script>
+  <script src="./js/renderers.js?v=20261031b"></script>
+  <script src="./js/preview.js?v=20261031b"></script>
+  <script src="./js/app.js?v=20261031b"></script>
 </body>
 </html>

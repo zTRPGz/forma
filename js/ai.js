@@ -20,7 +20,7 @@
     "Ты опытный редактор деловых документов на русском языке.",
     "Пиши конкретно: действия, сроки, ответственные, критерии и риски. Без вводных фраз вроде «в современном мире», без канцелярита, клише и саморекламы.",
     "Не выдумывай числа, даты, проценты, суммы, исследования и цитаты. Если точных данных нет, формулируй без числа: «сократит время подготовки отчётов», «заметно ускорит согласование». Заглушку «___» ставь только там, где без числа фраза теряет смысл. Никогда не подставляй правдоподобные цифры от себя.",
-    "Структура: заголовок документа до 10 слов, подзаголовок до 12 слов, 4–6 разделов с содержательными заголовками до 8 слов.",
+    "Структура: заголовок документа до 10 слов, подзаголовок до 12 слов, содержательные заголовки разделов до 8 слов. Число разделов задано в описании формата ниже.",
     "В разделе — 1–3 абзаца по 400–700 знаков каждый. Абзац — это 3–5 законченных предложений с конкретикой, а не набор коротких фраз.",
     "Список — 3–6 пунктов, каждый пункт — законченная мысль до 20 слов. Таблица только там, где помогает сравнению или плану: 2–4 столбца, до 6 строк.",
     "Перечисления действий, условий и рекомендаций оформляй полем bullets, а не отдельными короткими абзацами: абзац — это связный текст из нескольких предложений.",
@@ -30,8 +30,8 @@
   ].join(" ");
 
   const FORMAT_BRIEF = {
-    docx: "Деловой документ: цель и контекст, затем шаги, роли, сроки и риски. Таблица уместна для плана или сравнения вариантов. Объём — 1800–3000 знаков текста.",
-    pdf: "Аналитическая записка: проблема, наблюдения, выводы и рекомендации. Тон сдержанный, выводы проверяемые. Объём — 1500–2500 знаков текста.",
+    docx: "Деловой документ из 4–6 разделов: цель и контекст, затем шаги, роли, сроки и риски. Таблица уместна для плана или сравнения вариантов. Объём — 1800–3000 знаков текста.",
+    pdf: "Аналитическая записка из 4–6 разделов: проблема, наблюдения, выводы и рекомендации. Тон сдержанный, выводы проверяемые. Объём — 1500–2500 знаков текста.",
     pptx: "Презентация: 4–6 разделов-слайдов, в каждом 2–4 коротких пункта до 15 слов; абзацы короткие, не больше одного на слайд. Объём — 700–1200 знаков: слайды не должны быть перегружены текстом.",
   };
 
@@ -227,8 +227,248 @@
     return "Содержания слишком мало: нужно 4–6 разделов с конкретикой — действиями, сроками, ответственными и рисками. В каждом разделе 1–3 абзаца по 400–700 знаков. Расширь документ и верни полный JSON по схеме из первого сообщения, без пояснений.";
   }
 
-  function repairPrompt(answer) {
-    const draft = String(answer.content || "").trim().slice(0, 2000);
+  function sectionCount(value) {
+    return value && Array.isArray(value.sections) ? value.sections.length : 0;
+  }
+
+  function usableSections(value) {
+    if (!value || !Array.isArray(value.sections)) return [];
+    return value.sections.filter(function (item) {
+      return item && typeof item === "object";
+    });
+  }
+
+  async function topUpSections(doc, options, messages, jsonMode, signal) {
+    const target = Math.max(1, (options && options.slides ? options.slides : 6) - 1);
+    if (sectionCount(doc) >= target) return doc;
+    if (!Array.isArray(doc.sections)) doc.sections = [];
+
+    for (let attempt = 0; attempt < 2 && doc.sections.length < target; attempt += 1) {
+      const missing = target - doc.sections.length;
+      const existing = doc.sections
+        .map(function (item) {
+          return String((item && item.heading) || "").trim();
+        })
+        .filter(Boolean);
+
+      const prompt = [
+        "Для презентации нужно ровно " +
+          target +
+          " содержательных разделов, сейчас есть " +
+          existing.length +
+          ".",
+        existing.length ? "Уже заняты темы: «" + existing.join("», «") + "»." : "",
+        "Добавь ровно " + missing + " новых разделов на ту же тему, не повторяя существующие.",
+        'Верни строго один JSON-объект вида {"sections":[{"heading":"…","paragraphs":[],"bullets":["…","…"]}]} — только новые разделы, без таблиц. В каждом разделе 2–4 пункта до 15 слов. Без пояснений, markdown и обёртки из ```.',
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+
+      const answer = await complete(
+        messages.concat([{ role: "user", content: prompt }]),
+        { json: jsonMode, temperature: 0.5, maxTokens: 1600 },
+        signal
+      );
+      const fresh = usableSections(parseContent(answer.content));
+      if (!fresh.length) continue;
+
+      const seen = new Set(
+        existing.map(function (heading) {
+          return heading.toLowerCase();
+        })
+      );
+      fresh.forEach(function (item) {
+        const heading = String(item.heading || "").trim();
+        if (!heading || seen.has(heading.toLowerCase())) return;
+        seen.add(heading.toLowerCase());
+        doc.sections.push(item);
+      });
+      if (doc.sections.length > target) doc.sections.length = target;
+    }
+
+    return doc;
+  }
+
+  function headingKey(value) {
+    return String(value || "")
+      .replace(/[^0-9a-zA-Zа-яёА-ЯЁ]+/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+
+  async function askJson(messages, settings, signal) {
+    let answer;
+    try {
+      answer = await complete(messages, Object.assign({ json: true }, settings), signal);
+    } catch (error) {
+      if (error.status !== 400 && error.status !== 422) throw error;
+      answer = await complete(messages, Object.assign({ json: false }, settings), signal);
+    }
+    return parseContent(answer.content);
+  }
+
+  function headingList(value) {
+    return usableSections(value)
+      .map(function (item) {
+        return String(item.heading || "").trim();
+      })
+      .filter(Boolean);
+  }
+
+  async function buildDeck(topic, options, signal) {
+    const target = Math.max(1, options.slides - 1);
+    const system = { role: "system", content: SYSTEM_PROMPT };
+    const lead = "Тема: «" + topic + "»\n\n";
+
+    const outline = await askJson(
+      [
+        system,
+        {
+          role: "user",
+          content:
+            lead +
+            "Нужен план презентации ровно на " +
+            options.slides +
+            " слайдов, включая титульный: " +
+            target +
+            " содержательных разделов.\n" +
+            'Верни только JSON вида {"title":"…","subtitle":"…","sections":[{"heading":"…"}]} — ровно ' +
+            target +
+            " объектов в sections, в каждом только heading. Без bullets, paragraphs и table. Заголовки до 8 слов, разные аспекты темы, без повторов, в логическом порядке. Без пояснений и markdown.",
+        },
+      ],
+      { temperature: 0.5, maxTokens: 1200 },
+      signal
+    );
+
+    const headings = headingList(outline).slice(0, target);
+
+    if (headings.length < target) {
+      const missing = target - headings.length;
+      const more = await askJson(
+        [
+          system,
+          {
+            role: "user",
+            content:
+              lead +
+              (headings.length
+                ? "Для плана презентации уже есть разделы: «" + headings.join("», «") + "». "
+                : "") +
+              "Добавь ровно " +
+              missing +
+              " новых заголовков до 8 слов на ту же тему, не повторяя существующие.\n" +
+              'Верни только JSON {"sections":[{"heading":"…"}]} с новыми заголовками. Без пояснений и markdown.',
+          },
+        ],
+        { temperature: 0.6, maxTokens: 700 },
+        signal
+      );
+      const seen = new Set(headings.map(headingKey));
+      headingList(more).forEach(function (heading) {
+        if (headings.length >= target) return;
+        const key = headingKey(heading);
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        headings.push(heading);
+      });
+    }
+
+    if (!headings.length) return null;
+
+    const filled = new Map();
+
+    async function fillChunk(chunk) {
+      const response = await askJson(
+        [
+          system,
+          {
+            role: "user",
+            content:
+              lead +
+              "Разделы презентации: «" +
+              chunk.join("», «") +
+              "».\nДля каждого заголовка напиши 2–4 коротких пункта до 15 слов; заголовки оставь дословно. Без таблиц.\n" +
+              'Верни только JSON {"sections":[{"heading":"…","bullets":["…","…"]}]} — по одному объекту на каждый заголовок, в том же порядке. Без пояснений и markdown.',
+          },
+        ],
+        { temperature: 0.6, maxTokens: 1400 },
+        signal
+      );
+      const items = usableSections(response).filter(function (item) {
+        return Array.isArray(item.bullets) && item.bullets.length;
+      });
+
+      const paired = Math.min(items.length, chunk.length);
+      for (let index = 0; index < paired; index += 1) {
+        const key = headingKey(chunk[index]);
+        if (!key || filled.has(key)) continue;
+        const bullets = items[index].bullets.filter(function (bullet) {
+          return String(bullet || "").trim();
+        });
+        if (bullets.length) filled.set(key, bullets);
+      }
+
+      items.slice(paired).forEach(function (item) {
+        const key = headingKey(item.heading);
+        if (!key || filled.has(key)) return;
+        const bullets = item.bullets.filter(function (bullet) {
+          return String(bullet || "").trim();
+        });
+        if (bullets.length) filled.set(key, bullets);
+      });
+    }
+
+    const chunks = [];
+    for (let start = 0; start < headings.length; start += 3) {
+      chunks.push(headings.slice(start, start + 3));
+    }
+    for (let index = 0; index < chunks.length; index += 1) {
+      if (filled.size >= headings.length) break;
+      await fillChunk(chunks[index]).catch(function () {
+        return null;
+      });
+    }
+
+    for (let round = 0; round < 2; round += 1) {
+      const missing = headings.filter(function (heading) {
+        return !filled.has(headingKey(heading));
+      });
+      if (!missing.length) break;
+      const step = round === 0 ? 2 : 1;
+      for (let start = 0; start < missing.length; start += step) {
+        await fillChunk(missing.slice(start, start + step)).catch(function () {
+          return null;
+        });
+      }
+    }
+
+    const sections = headings
+      .filter(function (heading) {
+        return filled.has(headingKey(heading));
+      })
+      .map(function (heading) {
+        return {
+          heading: heading,
+          paragraphs: [],
+          bullets: filled.get(headingKey(heading)),
+          table: null,
+        };
+      });
+
+    if (!sections.length) return null;
+
+    return {
+      title: String((outline && outline.title) || "").trim(),
+      subtitle: String((outline && outline.subtitle) || "").trim(),
+      author: "",
+      date: "",
+      sections: sections,
+    };
+  }
+
+  function repairPrompt(answer) {    const draft = String(answer.content || "").trim().slice(0, 2000);
     const lines = [
       "Предыдущий ответ не удалось разобрать как JSON" +
         (answer.finish === "length" ? " — он оборван по лимиту длины" : "") +
@@ -308,6 +548,13 @@
     const budget = maxTokensFor(format, options);
 
     try {
+      if (format === "pptx" && options && options.slides && options.slides >= 12) {
+        const deck = await buildDeck(topic, options, controller.signal).catch(function () {
+          return null;
+        });
+        if (deck) return deck;
+      }
+
       let answer;
       let jsonMode = true;
       try {
@@ -367,7 +614,16 @@
           controller.signal
         );
         const fuller = parseContent(expanded.content);
-        if (fuller && !isThin(fuller, format, options)) parsed = fuller;
+        if (
+          fuller &&
+          (sectionCount(fuller) > sectionCount(parsed) || !isThin(fuller, format, options))
+        ) {
+          parsed = fuller;
+        }
+      }
+
+      if (format === "pptx" && options && options.slides) {
+        parsed = await topUpSections(parsed, options, messages, jsonMode, controller.signal);
       }
 
       return parsed;

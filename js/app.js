@@ -11,7 +11,15 @@
   const FORMAT_KEY = "forma.format.v1";
   const SLIDES_KEY = "forma.slides.v1";
   const THEME_KEY = "forma.theme.v1";
-  const SLIDE_COUNTS = [4, 6, 8, 10];
+  const SLIDE_COUNTS = [4, 6, 8, 10, 12, 16, 20];
+  const FALLBACK_IDEAS = [
+    "онбординг новых сотрудников за первые две недели",
+    "план запуска продукта на новом рынке",
+    "анализ рынка доставки продуктов",
+    "регламент совещаний и рабочих встреч",
+    "стратегия удержания клиентов",
+    "программа обучения руководителей",
+  ];
 
   const topic = document.getElementById("topic");
   const count = document.getElementById("count");
@@ -40,6 +48,13 @@
   const templateAttach = document.getElementById("template-attach");
   const attachLabel = document.getElementById("attach-label");
   const templateNote = document.getElementById("template-note");
+  const ideaButtons = Array.prototype.slice.call(document.querySelectorAll("#ideas .idea"));
+  const IDEAS = ideaButtons
+    .map(function (button) {
+      return button.dataset.topic;
+    })
+    .filter(Boolean);
+  if (!IDEAS.length) IDEAS.push.apply(IDEAS, FALLBACK_IDEAS);
 
   let format = "docx";
   let busy = false;
@@ -48,6 +63,7 @@
   let themeId = "paper";
   let customTheme = null;
   let templateMessage = null;
+  let lastIdea = -1;
 
   function setStatus(message, isError) {
     statusLine.textContent = message;
@@ -121,6 +137,14 @@
     if (last === 1 && tail !== 11) return "слайд";
     if (last >= 2 && last <= 4 && (tail < 12 || tail > 14)) return "слайда";
     return "слайдов";
+  }
+
+  function pickIdea() {
+    if (IDEAS.length === 1) return IDEAS[0];
+    let index = Math.floor(Math.random() * IDEAS.length);
+    if (index === lastIdea) index = (index + 1) % IDEAS.length;
+    lastIdea = index;
+    return IDEAS[index];
   }
 
   function currentTheme() {
@@ -397,7 +421,12 @@
   async function generate() {
     if (busy) return;
 
-    const value = topic.value.trim();
+    let value = topic.value.trim();
+    if (!value) {
+      value = pickIdea();
+      topic.value = value;
+      updateCounter();
+    }
     if (value.length < 3) {
       setStatus("Опишите тему хотя бы тремя символами.", true);
       topic.focus();

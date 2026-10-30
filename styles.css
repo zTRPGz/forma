@@ -692,7 +692,10 @@ body::before {
 }
 
 .segmented {
-  display: inline-flex;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(34px, 1fr);
+  max-width: 100%;
   gap: 3px;
   padding: 3px;
   background: #efe6d7;
@@ -700,9 +703,9 @@ body::before {
 }
 
 .seg-btn {
-  min-width: 36px;
+  min-width: 34px;
   height: 30px;
-  padding: 0 8px;
+  padding: 0 6px;
   font-family: var(--mono);
   font-size: 12px;
   color: var(--muted);
@@ -1968,6 +1971,12 @@ textarea:focus {
   .option-row {
     gap: 8px;
     padding: 9px 10px;
+  }
+
+  .segmented {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
   }
 
   .option-hint {
