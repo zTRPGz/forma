@@ -239,7 +239,7 @@
           spacing: { after: 0 },
           border: { bottom: { style: D.BorderStyle.SINGLE, size: 4, space: 4, color: T.rule } },
           children: [
-            new D.TextRun({ text: "FORMA", size: 16, bold: true, color: T.accent, font: T.bodyFont }),
+            new D.TextRun({ text: "ТЕЗИС", size: 16, bold: true, color: T.accent, font: T.bodyFont }),
             new D.TextRun({ text: "   ·   документ", size: 16, color: T.muted, font: T.bodyFont }),
           ],
         }),
@@ -329,8 +329,8 @@
 
     const document = new D.Document({
       title: doc.title,
-      creator: doc.author || "Forma",
-      description: "Документ собран в FORMA",
+      creator: doc.author || "Тезис",
+      description: "Документ собран в «Тезисе»",
       styles: docxStyles(D, T),
       numbering: docxNumbering(D, T),
       sections: [
@@ -385,7 +385,7 @@
     const slide = pptx.addSlide();
     slide.background = { color: T.navy };
     pptxRect(slide, RECT, 0, 0, 0.16, PPT_H, T.accent);
-    pptxText(slide, PPT_M, 0.62, 5, 0.4, "FORMA", {
+    pptxText(slide, PPT_M, 0.62, 5, 0.4, "ТЕЗИС", {
       fontFace: T.bodyFont,
       fontSize: 11,
       bold: true,
@@ -425,7 +425,7 @@
     const slide = pptx.addSlide();
     slide.background = { color: T.navy };
     pptxRect(slide, RECT, 0, 0, 0.16, PPT_H, T.accent);
-    pptxText(slide, PPT_M, 0.62, 5, 0.4, "FORMA", {
+    pptxText(slide, PPT_M, 0.62, 5, 0.4, "ТЕЗИС", {
       fontFace: T.bodyFont,
       fontSize: 11,
       bold: true,
@@ -476,7 +476,7 @@
 
   function pptxFooter(slide, RECT, page, T) {
     pptxRect(slide, RECT, PPT_M, 6.98, PPT_CONTENT_W, 0.01, T.rule);
-    pptxText(slide, PPT_M, 7.1, 4, 0.26, "FORMA", {
+    pptxText(slide, PPT_M, 7.1, 4, 0.26, "ТЕЗИС", {
       fontSize: 8.5,
       bold: true,
       color: T.muted,
@@ -692,8 +692,8 @@
     pptx.layout = "FORMA_WIDE";
     const RECT = pptx.ShapeType.rect;
     pptx.title = doc.title;
-    pptx.author = doc.author || "Forma";
-    pptx.company = "FORMA";
+    pptx.author = doc.author || "Тезис";
+    pptx.company = "Тезис";
 
     pptxCover(pptx, RECT, doc, T);
 
@@ -844,7 +844,7 @@
     const definition = {
       pageSize: "A4",
       pageMargins: [62, 72, 62, 52],
-      info: { title: doc.title, author: doc.author || "Forma", creator: "Forma" },
+      info: { title: doc.title, author: doc.author || "Тезис", creator: "Тезис" },
       defaultStyle: { font: "Roboto", fontSize: 10.5, lineHeight: 1.4, color: pdfHex(T.ink) },
       styles: {
         title: { fontSize: 26, bold: true, color: pdfHex(T.ink), margin: [0, 0, 0, 8] },
@@ -859,7 +859,7 @@
           stack: [
             {
               columns: [
-                { text: "FORMA", bold: true, fontSize: 8, color: pdfHex(T.accent) },
+                { text: "ТЕЗИС", bold: true, fontSize: 8, color: pdfHex(T.accent) },
                 { text: "документ", fontSize: 8, color: pdfHex(T.muted), alignment: "right" },
               ],
             },

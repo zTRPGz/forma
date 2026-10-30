@@ -36,6 +36,7 @@
   const downloadLabel = document.getElementById("download-label");
   const retryButton = document.getElementById("retry");
   const outlineList = document.getElementById("outline-list");
+  const outlineCount = document.getElementById("outline-count");
   const preview = document.getElementById("preview");
   const badge = document.getElementById("llm-badge");
   const formatsEl = document.querySelector(".formats");
@@ -48,6 +49,11 @@
   const templateAttach = document.getElementById("template-attach");
   const attachLabel = document.getElementById("attach-label");
   const templateNote = document.getElementById("template-note");
+  const genEl = document.getElementById("gen");
+  const genLiveLabel = document.getElementById("gen-live-label");
+  const genFill = document.getElementById("gen-fill");
+  const genSteps = Array.prototype.slice.call(document.querySelectorAll(".gen-step"));
+  const topbar = document.querySelector(".topbar");
   const ideaButtons = Array.prototype.slice.call(document.querySelectorAll("#ideas .idea"));
   const IDEAS = ideaButtons
     .map(function (button) {
@@ -76,6 +82,57 @@
     generateButton.setAttribute("aria-busy", String(value));
     statusLine.classList.toggle("is-busy", value);
     ctaText.textContent = value ? "Собираю…" : "Сгенерировать";
+  }
+
+  function showGen() {
+    if (!genEl) return;
+    genEl.hidden = false;
+    genEl.setAttribute("aria-hidden", "false");
+    genEl.classList.remove("is-done", "is-error");
+    genEl.dataset.stage = "content";
+    if (genLiveLabel) genLiveLabel.textContent = "идёт";
+    genSteps.forEach(function (step, index) {
+      step.classList.toggle("is-active", index === 0);
+      step.classList.remove("is-done");
+    });
+    if (genFill) genFill.style.transform = "scaleX(0.06)";
+    setGenStage("content");
+    const calm =
+      window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    genEl.scrollIntoView({ block: "nearest", behavior: calm ? "auto" : "smooth" });
+  }
+
+  function setGenStage(stage) {
+    if (!genEl) return;
+    const order = ["content", "layout", "file"];
+    const index = order.indexOf(stage);
+    if (index < 0) return;
+    genEl.dataset.stage = stage;
+    genSteps.forEach(function (step, position) {
+      step.classList.toggle("is-active", position === index);
+      step.classList.toggle("is-done", position < index);
+    });
+    if (genFill) {
+      genFill.style.transform = "scaleX(" + [0.16, 0.56, 0.86][index] + ")";
+    }
+  }
+
+  function finishGen(failed) {
+    if (!genEl || genEl.hidden) return;
+    genEl.classList.toggle("is-error", Boolean(failed));
+    genEl.classList.toggle("is-done", !failed);
+    if (genLiveLabel) genLiveLabel.textContent = failed ? "ошибка" : "готово";
+    genSteps.forEach(function (step) {
+      step.classList.remove("is-active");
+      step.classList.toggle("is-done", !failed);
+    });
+    if (genFill) genFill.style.transform = failed ? "scaleX(0.86)" : "scaleX(1)";
+  }
+
+  function hideGen() {
+    if (!genEl) return;
+    genEl.hidden = true;
+    genEl.setAttribute("aria-hidden", "true");
   }
 
   function readStoredFormat() {
@@ -235,7 +292,7 @@
   }
 
   async function attachTemplate(file) {
-    if (!file || !Forma.themes) return;
+    if (!file || !Forma.themes || busy) return;
     templateAttach.classList.add("is-busy");
     attachLabel.textContent = "Читаю шаблон…";
     templateFile.disabled = true;
@@ -267,13 +324,13 @@
     badge.classList.toggle("badge--demo", state === "demo");
     if (state === "live") {
       badge.textContent = "ИИ · на связи";
-      badge.title = "GigaChat-2 отвечает с сервера FORMA.";
+      badge.title = "GigaChat-2 отвечает с сервера «Тезиса».";
     } else if (state === "demo") {
       badge.textContent = "ИИ · демо-режим";
       badge.title = reason || "Сервис ИИ недоступен — документы собираются в демо-режиме.";
     } else {
       badge.textContent = "ИИ · GigaChat-2";
-      badge.title = "Содержание собирает GigaChat на сервере FORMA.";
+      badge.title = "Содержание собирает GigaChat на сервере «Тезиса».";
     }
   }
 
@@ -289,7 +346,7 @@
   }
 
   function selectFormat(next, moveFocus) {
-    if (!NAMES[next]) return;
+    if (!NAMES[next] || busy) return;
     const changed = format !== next;
     format = next;
     applyFormatUI();
@@ -310,6 +367,7 @@
   }
 
   function hideResult() {
+    hideGen();
     result.hidden = true;
     retryButton.hidden = true;
     preview.className = "preview";
@@ -378,7 +436,7 @@
   });
 
   function selectSlides(next, moveFocus) {
-    if (!next || next === slides) return;
+    if (!next || next === slides || busy) return;
     slides = next;
     applySlidesUI();
     storeSlides();
@@ -461,17 +519,22 @@
       return;
     }
 
+    const targetFormat = format;
+    const targetSlides = slides;
+    const targetTheme = currentTheme();
+
     setBusy(true);
     hideResult();
+    showGen();
     setStatus("GigaChat пишет содержание…");
 
     const slowHint = setTimeout(function () {
-      if (format === "pptx" && slides >= 12) {
+      if (targetFormat === "pptx" && targetSlides >= 12) {
         setStatus("Собираю большую презентацию — обычно это занимает до 40 секунд.");
       }
     }, 10000);
 
-    const depsReady = Forma.deps.ensure(format).then(
+    const depsReady = Forma.deps.ensure(targetFormat).then(
       function () {
         return null;
       },
@@ -481,15 +544,17 @@
     );
 
     const started = performance.now();
+    let failed = false;
 
     try {
       const options = {
-        slides: format === "pptx" ? slides : null,
-        theme: currentTheme(),
+        slides: targetFormat === "pptx" ? targetSlides : null,
+        theme: targetTheme,
       };
-      const generated = await Forma.ai.generateContent(value, format, options);
+      const generated = await Forma.ai.generateContent(value, targetFormat, options);
 
-      if (!Forma.deps.ready(format)) setStatus("Загружаю модуль вёрстки…");
+      if (!Forma.deps.ready(targetFormat)) setStatus("Загружаю модуль вёрстки…");
+      setGenStage("layout");
       const depsError = await depsReady;
       if (depsError) {
         throw new Error("модуль вёрстки не загрузился — проверьте, что папка vendor загружена полностью, и обновите страницу.");
@@ -497,16 +562,17 @@
 
       clearTimeout(slowHint);
       setStatus("Собираю файл…");
-      const blob = await Forma.renderers[format](generated.doc);
-      const file = new Blob([blob], { type: MIME[format] });
+      setGenStage("file");
+      const blob = await Forma.renderers[targetFormat](generated.doc);
+      const file = new Blob([blob], { type: MIME[targetFormat] });
       const url = URL.createObjectURL(file);
       if (lastUrl) URL.revokeObjectURL(lastUrl);
       lastUrl = url;
 
       const seconds = (performance.now() - started) / 1000;
-      const filename = "forma-" + Forma.slugify(generated.doc.title) + "." + format;
+      const filename = "tezis-" + Forma.slugify(generated.doc.title) + "." + targetFormat;
 
-      renderResult(generated, url, filename, seconds);
+      renderResult(generated, url, filename, seconds, targetFormat);
       if (generated.note) {
         setBadge("demo", generated.note);
         setStatus("Демо-документ готов — можно попробовать ещё раз.");
@@ -515,31 +581,34 @@
         setStatus("Файл готов.");
       }
     } catch (error) {
+      failed = true;
       setStatus(
         "Не удалось собрать файл: " + (error && error.message ? error.message : "неизвестная ошибка."),
         true
       );
     } finally {
       clearTimeout(slowHint);
+      finishGen(failed);
       setBusy(false);
     }
   }
 
-  function renderResult(generated, url, filename, seconds) {
+  function renderResult(generated, url, filename, seconds, targetFormat) {
     const doc = generated.doc;
 
     resultTitle.textContent = doc.title;
-    const parts = [NAMES[format]];
-    if (format === "pptx" && doc.slides) parts.push(doc.slides + " " + slidesWord(doc.slides));
+    const parts = [NAMES[targetFormat]];
+    if (targetFormat === "pptx" && doc.slides) parts.push(doc.slides + " " + slidesWord(doc.slides));
     if (Forma.themes) parts.push("Шаблон · " + Forma.themes.resolve(doc.theme).name);
     parts.push(generated.provider);
     if (generated.model) parts.push(generated.model);
     parts.push(seconds.toFixed(1).replace(".", ",") + " с");
     resultMeta.replaceChildren();
-    parts.forEach(function (part) {
+    parts.forEach(function (part, index) {
       const chip = document.createElement("span");
       chip.className = "chip";
       chip.textContent = part;
+      chip.style.animationDelay = 80 + index * 45 + "ms";
       resultMeta.append(chip);
     });
 
@@ -549,12 +618,14 @@
 
     downloadLink.href = url;
     downloadLink.download = filename;
-    downloadLabel.textContent = "Скачать " + EXTS[format];
+    downloadLabel.textContent = "Скачать " + EXTS[targetFormat];
     downloadLink.setAttribute("aria-disabled", "false");
 
     outlineList.replaceChildren();
+    if (outlineCount) outlineCount.textContent = String(doc.sections.length);
     doc.sections.forEach(function (section, index) {
       const item = document.createElement("li");
+      item.style.animationDelay = 120 + index * 55 + "ms";
       const number = document.createElement("span");
       number.className = "n";
       number.textContent = String(index + 1).padStart(2, "0");
@@ -575,22 +646,28 @@
       outlineList.append(item);
     });
 
-    preview.className = "preview preview--" + format;
+    preview.className = "preview preview--" + targetFormat;
     preview.replaceChildren();
 
     const caption = document.createElement("p");
     caption.className = "preview-caption";
-    caption.textContent = "Макет " + NAMES[format] + " · точная вёрстка — в скачанном файле";
+    caption.textContent = "Макет " + NAMES[targetFormat] + " · точная вёрстка — в скачанном файле";
 
     const scroll = document.createElement("div");
     scroll.className = "preview-scroll";
-    scroll.append(Forma.preview[format](doc));
+    scroll.append(Forma.preview[targetFormat](doc));
 
     preview.append(caption, scroll);
 
     result.hidden = false;
     result.scrollIntoView({ block: "start" });
   }
+
+  function syncTopbar() {
+    if (topbar) topbar.classList.toggle("is-scrolled", window.scrollY > 8);
+  }
+
+  window.addEventListener("scroll", syncTopbar, { passive: true });
 
   format = readStoredFormat();
   slides = readStoredSlides();
@@ -600,6 +677,7 @@
   updateTemplateNote();
   applyFormatUI();
   updateCounter();
+  syncTopbar();
 
   Forma.ai.health().then(function (result) {
     setBadge(result.ok ? "live" : "demo", result.reason);

@@ -217,7 +217,7 @@
     }
 
     const head = node("div", "doc-page-head");
-    head.append(node("span", "doc-page-brand", "FORMA"));
+    head.append(node("span", "doc-page-brand", "ТЕЗИС"));
     head.append(node("span", "doc-page-label", " · документ"));
 
     sheet.append(head, body, node("div", "doc-page-foot", String(pageNumber)));
@@ -265,7 +265,7 @@
     const page = node("div", "doc-page pdf-page");
     const sheet = node("div", "doc-page-sheet");
     const head = node("div", "doc-page-head");
-    head.append(node("span", "doc-page-brand", "FORMA"));
+    head.append(node("span", "doc-page-brand", "ТЕЗИС"));
     head.append(node("span", "doc-page-label", " · аналитическая записка"));
 
     const body = node("div", "doc-page-body");
@@ -316,7 +316,7 @@
   function slideFooter(page) {
     const rule = node("div", "slide-foot-rule");
     const foot = node("div", "slide-foot");
-    foot.append(node("span", "slide-foot-brand", "FORMA"));
+    foot.append(node("span", "slide-foot-brand", "ТЕЗИС"));
     foot.append(node("span", "slide-foot-page", String(page).padStart(2, "0")));
     return [rule, foot];
   }
@@ -324,7 +324,7 @@
   function pptxCover(doc) {
     const slide = node("div", "slide slide--cover");
     slide.append(node("div", "slide-bar"));
-    slide.append(node("div", "slide-brand", "FORMA"));
+    slide.append(node("div", "slide-brand", "ТЕЗИС"));
 
     const title = node("p", "slide-cover-title", doc.title);
     const length = doc.title.length;
@@ -447,7 +447,7 @@
   function pptxFinal(doc) {
     const slide = node("div", "slide slide--cover slide--final");
     slide.append(node("div", "slide-bar"));
-    slide.append(node("div", "slide-brand", "FORMA"));
+    slide.append(node("div", "slide-brand", "ТЕЗИС"));
 
     const title = node("p", "slide-cover-title", doc.title);
     const length = doc.title.length;

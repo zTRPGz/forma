@@ -3,18 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="FORMA — Word, PDF и PowerPoint из одной фразы. Содержание собирает ИИ, вёрстку задаёт FORMA. Файлы создаются прямо в браузере.">
-  <meta name="theme-color" content="#f2ece3">
+  <meta name="description" content="Тезис — Word, PDF и PowerPoint из одной фразы. ИИ собирает структуру, сайт верстает файл и оставляет место под фото. Без регистрации.">
+  <meta name="theme-color" content="#f3ede4">
+  <meta name="color-scheme" content="light">
+  <meta name="application-name" content="Тезис">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="FORMA — документы из одной фразы">
-  <meta property="og:description" content="Word, PDF и PowerPoint из одной фразы. Содержание собирает ИИ, вёрстку задаёт FORMA — файлы создаются в браузере.">
+  <meta property="og:title" content="Тезис — документы и презентации из одной фразы">
+  <meta property="og:description" content="Опишите задачу одной фразой — Тезис соберёт Word, PDF или PowerPoint, сверстает файл и оставит место под фото. Без установки и регистрации.">
   <meta property="og:url" content="https://forma-docs.duckdns.org/">
   <meta property="og:locale" content="ru_RU">
   <link rel="canonical" href="https://forma-docs.duckdns.org/">
-  <title>Forma — документы из одной фразы</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2316243a'/%3E%3Crect x='24' y='24' width='16' height='16' fill='%23b45309' transform='rotate(45 32 32)'/%3E%3C/svg%3E">
+  <title>Тезис — документы и презентации из одной фразы</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23101d2f'/%3E%3Cpath d='M18 19h28v7H36v20h-8V26H18z' fill='%23f3ede4'/%3E%3Ccircle cx='47' cy='47' r='4' fill='%23c2410c'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://forma-docs.duckdns.org" crossorigin>
-  <link rel="stylesheet" href="./styles.css?v=20261031g">
+  <link rel="stylesheet" href="./styles.css?v=20261031i">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Тезис",
+      "url": "https://forma-docs.duckdns.org/",
+      "description": "Документы и презентации из одной фразы: Word, PDF и PowerPoint с готовой структурой и вёрсткой.",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Any",
+      "inLanguage": "ru",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "RUB" }
+    }
+  </script>
 </head>
 <body>
   <a class="skip-link" href="#main">Перейти к форме</a>
@@ -22,8 +37,13 @@
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <span class="brand-name">FORMA</span>
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M6.2 6.4h11.6v2.9h-4.2v8.3H10.4V9.3H6.2z" fill="currentColor"/>
+            <circle cx="17.7" cy="18" r="1.55" fill="#c2410c"/>
+          </svg>
+        </span>
+        <span class="brand-name">тезис</span>
         <span class="brand-tag">документы</span>
       </div>
       <div class="topbar-tools">
@@ -38,8 +58,8 @@
         <div class="hero-grid">
           <div class="hero-copy">
             <p class="eyebrow"><span class="eyebrow-mark" aria-hidden="true"></span>Word · PDF · PowerPoint</p>
-            <h1>Один текст —<br><em>три формата.</em></h1>
-            <p class="lead">Выберите формат и нажмите «Сгенерировать» — тему можно оставить пустой. Готовый файл в собственной вёрстке собирается в браузере.</p>
+            <h1>Одна фраза —<br><em>три формата.</em></h1>
+            <p class="lead">Опишите задачу своими словами — «Тезис» соберёт содержание, сверстает документ и подготовит файл к скачиванию. Без установки и регистрации.</p>
             <div class="ideas" id="ideas">
               <span class="ideas-label">Попробовать</span>
               <button type="button" class="idea" data-topic="онбординг новых сотрудников за первые две недели">онбординг сотрудников</button>
@@ -51,6 +71,8 @@
 
           <div class="hero-art" aria-hidden="true">
             <div class="art-glow"></div>
+            <span class="art-chip art-chip--time">≈ минута</span>
+            <span class="art-chip art-chip--done"><span class="art-chip-dot"></span>готово</span>
 
             <div class="art-sheet art-sheet--back">
               <div class="art-head"><span>PDF</span><span>A4</span></div>
@@ -77,11 +99,15 @@
             </div>
 
             <div class="art-slide">
-              <span class="art-slide-brand">FORMA</span>
+              <span class="art-slide-brand">ТЕЗИС</span>
               <span class="art-slide-title"></span>
               <span class="art-slide-rule"></span>
-              <span class="art-slide-line w74"></span>
-              <span class="art-slide-line w58"></span>
+              <div class="art-slide-body">
+                <span class="art-slide-line w96"></span>
+                <span class="art-slide-line w82"></span>
+                <span class="art-slide-line w64"></span>
+              </div>
+              <span class="art-slide-photo"><em>ФОТО</em></span>
               <span class="art-slide-foot"><span>01</span><span>PowerPoint</span></span>
             </div>
           </div>
@@ -92,7 +118,7 @@
         <div class="panel-head">
           <div>
             <h2 class="panel-title">Новый документ</h2>
-            <p class="panel-sub">Формат, шаблон, тема — и файл готов.</p>
+            <p class="panel-sub">Формат, оформление, тема — и файл готов.</p>
           </div>
           <span class="panel-time">≈ минута</span>
         </div>
@@ -100,6 +126,7 @@
         <p class="step-label"><span>01</span>Формат</p>
         <div class="formats" role="radiogroup" aria-label="Формат документа">
           <button type="button" class="format is-active" data-format="docx" role="radio" aria-checked="true">
+            <span class="format-index" aria-hidden="true">01</span>
             <span class="format-top">
               <span class="format-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -113,6 +140,7 @@
           </button>
 
           <button type="button" class="format" data-format="pdf" role="radio" aria-checked="false">
+            <span class="format-index" aria-hidden="true">02</span>
             <span class="format-top">
               <span class="format-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -126,6 +154,7 @@
           </button>
 
           <button type="button" class="format" data-format="pptx" role="radio" aria-checked="false">
+            <span class="format-index" aria-hidden="true">03</span>
             <span class="format-top">
               <span class="format-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -179,6 +208,19 @@
           <span class="cta-arrow" aria-hidden="true">→</span>
         </button>
 
+        <div class="gen" id="gen" hidden aria-hidden="true">
+          <div class="gen-head">
+            <span class="gen-title">Сборка документа</span>
+            <span class="gen-live"><span class="gen-live-dot"></span><span id="gen-live-label">идёт</span></span>
+          </div>
+          <div class="gen-track"><span class="gen-fill" id="gen-fill"></span></div>
+          <ol class="gen-steps">
+            <li class="gen-step is-active" data-stage="content"><span class="gen-dot"></span>Содержание</li>
+            <li class="gen-step" data-stage="layout"><span class="gen-dot"></span>Вёрстка</li>
+            <li class="gen-step" data-stage="file"><span class="gen-dot"></span>Файл</li>
+          </ol>
+        </div>
+
         <div class="panel-foot">
           <p id="status" class="status" role="status" aria-live="polite"></p>
           <p class="hint"><kbd>Ctrl</kbd><span>+</span><kbd>Enter</kbd> запуск без мыши</p>
@@ -204,7 +246,7 @@
         </div>
         <div class="result-body">
           <aside class="outline">
-            <p class="outline-title">Структура</p>
+            <p class="outline-title">Структура<span id="outline-count" class="outline-count"></span></p>
             <ol id="outline-list"></ol>
           </aside>
           <div id="preview" class="preview"></div>
@@ -213,18 +255,19 @@
     </main>
 
     <footer class="foot">
-      <span class="foot-brand"><span class="brand-mark" aria-hidden="true"></span>FORMA</span>
-      <span class="foot-note">Содержание собирает GigaChat, вёрстку задаёт FORMA. Файлы создаются в браузере.</span>
+      <span class="foot-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M6.2 6.4h11.6v2.9h-4.2v8.3H10.4V9.3H6.2z" fill="currentColor"/><circle cx="17.7" cy="18" r="1.55" fill="#c2410c"/></svg></span>тезис</span>
+      <span class="foot-tagline">документы и презентации из одной фразы</span>
+      <span class="foot-note">Содержание — GigaChat, вёрстка — в браузере.</span>
       <span class="foot-note foot-note--sep">Работает на телефоне и компьютере</span>
     </footer>
   </div>
 
-  <script src="./js/deps.js?v=20261031g"></script>
-  <script src="./js/model.js?v=20261031g"></script>
-  <script src="./js/themes.js?v=20261031g"></script>
-  <script src="./js/ai.js?v=20261031g"></script>
-  <script src="./js/renderers.js?v=20261031g"></script>
-  <script src="./js/preview.js?v=20261031g"></script>
-  <script src="./js/app.js?v=20261031g"></script>
+  <script src="./js/deps.js?v=20261031i"></script>
+  <script src="./js/model.js?v=20261031i"></script>
+  <script src="./js/themes.js?v=20261031i"></script>
+  <script src="./js/ai.js?v=20261031i"></script>
+  <script src="./js/renderers.js?v=20261031i"></script>
+  <script src="./js/preview.js?v=20261031i"></script>
+  <script src="./js/app.js?v=20261031i"></script>
 </body>
 </html>
