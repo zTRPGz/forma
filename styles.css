@@ -2841,37 +2841,35 @@ textarea:focus {
 
 .tpl-title {
   position: absolute;
-  top: 18%;
+  top: 15%;
   left: 5%;
   right: 5%;
   margin: 0;
   text-align: center;
   font-family: var(--sans);
-  font-size: 3.6cqw;
   font-weight: 700;
-  line-height: 1.12;
+  line-height: 1.2;
   color: #14243a;
 }
 
 .tpl-body {
   position: absolute;
-  top: 33%;
-  left: 6%;
-  right: 6%;
-  bottom: 14%;
+  top: 31%;
+  left: 5%;
+  right: 5%;
+  bottom: 15%;
   overflow: hidden;
 }
 
 .tpl-line {
-  margin: 0 0 0.7em;
+  margin: 0 0 0.2em;
   font-family: var(--sans);
-  font-size: 2.1cqw;
-  line-height: 1.4;
+  line-height: 1.2;
   color: #1f2a37;
 }
 
 .tpl-line--sub {
-  padding-left: 3.2cqw;
+  padding-left: 1.4em;
   position: relative;
   color: #33414f;
 }
@@ -2879,7 +2877,7 @@ textarea:focus {
 .tpl-line--sub::before {
   content: "–";
   position: absolute;
-  left: 0.8cqw;
+  left: 0.2em;
 }
 
 .tpl-page {

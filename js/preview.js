@@ -517,7 +517,24 @@
 
   function pptxTemplate(doc) {
     const assets = doc.templatePreview;
-    const aspect = assets.aspect || 16 / 9;
+    const fit = Forma.pptTemplates.fitScale;
+    const aspect = assets.aspect;
+    const fonts = assets.fonts;
+    const widthPt = assets.widthPt;
+    const heightPt = widthPt / aspect;
+
+    function boxOf(box) {
+      const side = widthPt * box.side;
+      return { w: widthPt - side * 2, h: heightPt * box.height };
+    }
+
+    const TITLE_BOX = boxOf(assets.boxes.title);
+    const BODY_BOX = boxOf(assets.boxes.body);
+
+    function toCqw(points) {
+      return ((points * 100) / widthPt).toFixed(3) + "cqw";
+    }
+
     const root = node("div", "slides-preview slides-preview--tpl");
     applyTheme(root, doc);
 
@@ -525,13 +542,27 @@
       const el = node("div", "slide slide--tpl");
       el.style.aspectRatio = String(aspect);
       el.style.backgroundImage = 'url("' + assets.backgroundImage + '")';
-      el.append(node("p", "tpl-title", title));
+
+      const heading = node("p", "tpl-title", title);
+      const titleScale = fit([{ level: 0, text: title }], TITLE_BOX, function () {
+        return fonts.titlePt;
+      });
+      heading.style.fontSize = toCqw(fonts.titlePt * titleScale);
+      el.append(heading);
+
       if (lines && lines.length) {
         const body = node("div", "tpl-body");
+        const scale = fit(lines, BODY_BOX, function (level) {
+          return level ? fonts.subPt : fonts.bodyPt;
+        });
         lines.forEach(function (line) {
-          body.append(
-            node("p", "tpl-line" + (line.level ? " tpl-line--sub" : ""), line.text)
+          const paragraph = node(
+            "p",
+            "tpl-line" + (line.level ? " tpl-line--sub" : ""),
+            line.text
           );
+          paragraph.style.fontSize = toCqw((line.level ? fonts.subPt : fonts.bodyPt) * scale);
+          body.append(paragraph);
         });
         el.append(body);
       }

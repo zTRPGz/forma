@@ -394,14 +394,19 @@
     return best;
   }
 
-  function paragraph(text, level) {
+  function paragraph(text, level, points) {
     const value = String(text || "").trim();
     if (!value) return "";
-    const properties = level > 0 ? '<a:pPr lvl="' + level + '"/>' : "";
+    // Макет МФЮА даёт первый уровень со знаком «•»: абзацам маркер отключаем,
+    // пункты остаются на втором уровне со знаком «–».
+    const properties =
+      level > 0 ? '<a:pPr lvl="' + level + '"/>' : "<a:pPr><a:buNone/></a:pPr>";
     return (
       "<a:p>" +
       properties +
-      '<a:r><a:rPr lang="ru-RU" dirty="0"/><a:t>' +
+      '<a:r><a:rPr lang="ru-RU" sz="' +
+      Math.round(points * 100) +
+      '" dirty="0"/><a:t>' +
       escapeXml(value) +
       "</a:t></a:r></a:p>"
     );
@@ -422,21 +427,131 @@
     );
   }
 
-  function contentFrames(presentationXml) {
-    const match = /<p:sldSz[^>]*cx="(\d+)"[^>]*cy="(\d+)"/.exec(presentationXml);
-    if (!match) return null;
-    const w = Number(match[1]);
-    const h = Number(match[2]);
+  function slideSize(presentationXml) {
+    const tag = /<p:sldSz\b[^>]*>/.exec(presentationXml);
+    if (!tag) return null;
+    const cx = /cx="(\d+)"/.exec(tag[0]);
+    const cy = /cy="(\d+)"/.exec(tag[0]);
+    if (!cx || !cy) return null;
+    const w = Number(cx[1]);
+    const h = Number(cy[1]);
     if (!w || !h) return null;
-    const side = w * 0.05;
-    const inner = w - side * 2;
+    return { w: w, h: h };
+  }
+
+  const MASTER_FONT_FALLBACK = { titlePt: 44, bodyPt: 32, subPt: 28 };
+
+  function styleSize(block) {
+    if (!block) return 0;
+    const match = /<a:defRPr[^>]*sz="(\d+)"/.exec(block);
+    return match ? Number(match[1]) / 100 : 0;
+  }
+
+  // Кегль из p:txStyles мастера: нужен, чтобы предпросмотр показывал те же
+  // размеры шрифта, что и PowerPoint в исходном шаблоне.
+  function masterFontSizes(masterXml) {
+    const title = /<p:titleStyle>([\s\S]*?)<\/p:titleStyle>/.exec(masterXml);
+    const body = /<p:bodyStyle>([\s\S]*?)<\/p:bodyStyle>/.exec(masterXml);
+    let titlePt = 0;
+    let bodyPt = 0;
+    let subPt = 0;
+    if (title) {
+      const level = /<a:lvl1pPr[\s\S]*?<\/a:lvl1pPr>/.exec(title[1]);
+      titlePt = styleSize(level && level[0]);
+    }
+    if (body) {
+      const inner = body[1];
+      const first = /<a:lvl1pPr[\s\S]*?<\/a:lvl1pPr>/.exec(inner);
+      const second = /<a:lvl2pPr[\s\S]*?<\/a:lvl2pPr>/.exec(inner);
+      bodyPt = styleSize(first && first[0]);
+      subPt = styleSize(second && second[0]);
+    }
     return {
-      title: { x: side, y: h * 0.18, w: inner, h: h * 0.11 },
-      body: { x: side, y: h * 0.32, w: inner, h: h * 0.52 },
+      titlePt: titlePt || MASTER_FONT_FALLBACK.titlePt,
+      bodyPt: bodyPt || MASTER_FONT_FALLBACK.bodyPt,
+      subPt: subPt || bodyPt || MASTER_FONT_FALLBACK.subPt,
     };
   }
 
-  function titlePlaceholder(title, slots, frame) {
+  // Доли слайда для текстовых рамок: ниже синей шапки МФЮА, выше жёлтого
+  // квадрата с номером. Предпросмотр берёт эти же значения из previewAssets.
+  const CONTENT_BOXES = {
+    title: { top: 0.15, height: 0.14, side: 0.05 },
+    body: { top: 0.31, height: 0.54, side: 0.05 },
+  };
+
+  function contentFrames(presentationXml) {
+    const size = slideSize(presentationXml);
+    if (!size) return null;
+    return {
+      title: frameOf(CONTENT_BOXES.title, size),
+      body: frameOf(CONTENT_BOXES.body, size),
+    };
+  }
+
+  function frameOf(box, size) {
+    const x = size.w * box.side;
+    return {
+      x: x,
+      y: size.h * box.top,
+      w: size.w - x * 2,
+      h: size.h * box.height,
+    };
+  }
+
+  const TEXT_METRICS = {
+    charWidth: 0.5,
+    leading: 1.2,
+    paraSpacing: 0.2,
+    subIndent: 1.4,
+    minScale: 0.3,
+    step: 0.05,
+  };
+
+  function boxPoints(frame) {
+    return frame ? { w: frame.w / 12700, h: frame.h / 12700 } : null;
+  }
+
+  function blockHeight(lines, box, sizeOf, scale) {
+    return lines.reduce(function (sum, line, index) {
+      const points = sizeOf(line.level) * scale;
+      const width = box.w - (line.level ? points * TEXT_METRICS.subIndent : 0);
+      const perLine = Math.max(1, Math.floor(width / (TEXT_METRICS.charWidth * points)));
+      const wrapped = Math.max(1, Math.ceil(String(line.text).length / perLine));
+      return (
+        sum +
+        wrapped * TEXT_METRICS.leading * points +
+        (index ? TEXT_METRICS.paraSpacing * points : 0)
+      );
+    }, 0);
+  }
+
+  // PowerPoint пересчитывает normAutofit только при правке текста, поэтому
+  // кегль уменьшаем сами и записываем его в запуск.
+  function fitScale(lines, box, sizeOf) {
+    if (!box || !lines.length) return 1;
+    let scale = 1;
+    while (scale > TEXT_METRICS.minScale && blockHeight(lines, box, sizeOf, scale) > box.h) {
+      scale -= TEXT_METRICS.step;
+    }
+    return Math.max(TEXT_METRICS.minScale, scale);
+  }
+
+  function layoutFonts(entries, layoutPart) {
+    const masterRel = relationshipsFor(entries, layoutPart).filter(function (relationship) {
+      return relationship.type === REL_TYPES.slideMaster;
+    })[0];
+    if (!masterRel) return masterFontSizes("");
+    const masterPart = resolvePath(directoryOf(layoutPart), masterRel.target);
+    const masterXml = entries.map.get(masterPart);
+    return masterFontSizes(masterXml ? decodeText(masterXml) : "");
+  }
+
+  function titlePlaceholder(title, slots, frame, fonts) {
+    const box = boxPoints(frame);
+    const scale = fitScale([{ level: 0, text: title }], box, function () {
+      return fonts.titlePt;
+    });
     return (
       "<p:sp>" +
       '<p:nvSpPr><p:cNvPr id="2" name="Заголовок"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>' +
@@ -446,19 +561,25 @@
       xfrm(frame) +
       "</p:spPr>" +
       "<p:txBody><a:bodyPr><a:normAutofit/></a:bodyPr><a:lstStyle/>" +
-      paragraph(title, 0) +
+      paragraph(title, 0, fonts.titlePt * scale) +
       "</p:txBody></p:sp>"
     );
   }
 
-  function bodyPlaceholder(lines, slots, frame) {
-    const content = lines
+  function bodyPlaceholder(lines, slots, frame, fonts) {
+    const filled = lines.filter(function (line) {
+      return String(line.text || "").trim();
+    });
+    if (!filled.length) return "";
+    const sizeOf = function (level) {
+      return level ? fonts.subPt : fonts.bodyPt;
+    };
+    const scale = fitScale(filled, boxPoints(frame), sizeOf);
+    const content = filled
       .map(function (line) {
-        return paragraph(line.text, line.level);
+        return paragraph(line.text, line.level, sizeOf(line.level) * scale);
       })
-      .filter(Boolean)
       .join("");
-    if (!content) return "";
     return (
       "<p:sp>" +
       '<p:nvSpPr><p:cNvPr id="3" name="Содержимое"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>' +
@@ -491,7 +612,7 @@
     );
   }
 
-  function slideXml(title, lines, position, slots, frames) {
+  function slideXml(title, lines, position, slots, frames, fonts) {
     return (
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
       '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' +
@@ -500,8 +621,8 @@
       '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>' +
       '<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/>' +
       '<a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>' +
-      titlePlaceholder(title, slots, frames && frames.title) +
-      bodyPlaceholder(lines, slots, frames && frames.body) +
+      titlePlaceholder(title, slots, frames && frames.title, fonts) +
+      bodyPlaceholder(lines, slots, frames && frames.body, fonts) +
       numberPlaceholder(position, slots) +
       "</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>"
     );
@@ -674,6 +795,7 @@
     const layoutPart = layout.part;
     const slots = layout.slots;
     const frames = contentFrames(decodeText(presentationXml));
+    const fonts = layoutFonts(entries, layoutPart);
 
     const packageMap = new Map();
     const carriedRels = keptPresentationRels(entries);
@@ -688,7 +810,7 @@
     const slideIds = slides.map(function (slide, index) {
       const name = "ppt/slides/slide" + (index + 1) + ".xml";
       const relId = "rId" + (firstRelId + index);
-      packageMap.set(name, encodeText(slideXml(slide.title, slide.lines, index + 1, slots, frames)));
+      packageMap.set(name, encodeText(slideXml(slide.title, slide.lines, index + 1, slots, frames, fonts)));
       packageMap.set(relationshipPath(name), encodeText(slideRelsXml(layoutPart)));
       return { id: 256 + index, relId: relId };
     });
@@ -798,30 +920,39 @@
     }
     const presentationXml = entries.map.get("ppt/presentation.xml");
     if (!presentationXml) return null;
-    const sizeMatch = /<p:sldSz[^>]*cx="(\d+)"[^>]*cy="(\d+)"/.exec(decodeText(presentationXml));
-    const aspect = sizeMatch ? Number(sizeMatch[1]) / Number(sizeMatch[2]) : 16 / 9;
+    const size = slideSize(decodeText(presentationXml));
+    const base = {
+      aspect: size ? size.w / size.h : 16 / 9,
+      widthPt: size ? size.w / 12700 : 960,
+      backgroundImage: null,
+      boxes: CONTENT_BOXES,
+      fonts: masterFontSizes(""),
+    };
     const masterRel = presentationRels(entries).filter(function (relationship) {
       return relationship.type === REL_TYPES.slideMaster;
     })[0];
-    if (!masterRel) return { aspect: aspect, backgroundImage: null };
-    const masterPart = resolvePath("ppt/", masterRel.target);
-    const masterXml = entries.map.get(masterPart);
-    if (!masterXml) return { aspect: aspect, backgroundImage: null };
+    const masterPart = masterRel ? resolvePath("ppt/", masterRel.target) : "";
+    const masterXml = masterPart ? entries.map.get(masterPart) : null;
+    if (!masterXml) return base;
+
+    base.fonts = masterFontSizes(decodeText(masterXml));
     const bgMatch = /<p:bg>[\s\S]*?<a:blip[^>]*r:embed="([^"]+)"/.exec(decodeText(masterXml));
-    if (!bgMatch) return { aspect: aspect, backgroundImage: null };
+    if (!bgMatch) return base;
     const imageRel = relationshipsFor(entries, masterPart).filter(function (relationship) {
       return relationship.id === bgMatch[1];
     })[0];
-    if (!imageRel) return { aspect: aspect, backgroundImage: null };
+    if (!imageRel) return base;
     const imagePart = resolvePath(directoryOf(masterPart), imageRel.target);
     const imageBytes = entries.map.get(imagePart);
-    if (!imageBytes) return { aspect: aspect, backgroundImage: null };
-    return { aspect: aspect, backgroundImage: toDataUrl(imageBytes, imagePart) };
+    if (!imageBytes) return base;
+    base.backgroundImage = toDataUrl(imageBytes, imagePart);
+    return base;
   }
 
   Object.assign(Forma, {
     pptTemplates: {
       render: render,
+      fitScale: fitScale,
       loadBuiltin: loadBuiltin,
       selectedBytes: selectedBytes,
       previewAssets: previewAssets,
