@@ -152,8 +152,8 @@
     );
   }
 
-  // GigaChat sometimes splits a section into {"heading":"…"} followed by a heading-less
-  // {"paragraphs":[…],"bullets":[…]}; pair them so the section survives normalization.
+  // Модель иногда разбивает раздел на {"heading":"…"} и заголовок без секции
+  // {"paragraphs":[…],"bullets":[…]}; склеиваем их, чтобы раздел не потерялся.
   function pairSplitSections(value) {
     if (!value || !Array.isArray(value.sections)) return value;
     const sections = [];
@@ -743,7 +743,7 @@
       if (!response.ok) return { ok: false, reason: friendlyError(response.status, "") };
       const data = await response.json();
       if (!data || data.ok !== true) return { ok: false, reason: "Сервис ИИ ответил неожиданно." };
-      if (!data.key) return { ok: false, reason: "На сервере не настроен ключ GigaChat." };
+      if (!data.key) return { ok: false, reason: "На сервере не настроен ключ ИИ." };
       return { ok: true, model: String(data.model || "") };
     } catch (error) {
       return { ok: false, reason: "Не удалось связаться с сервисом ИИ." };
@@ -760,7 +760,7 @@
       const doc = Forma.normalize(raw, format, options);
       if (raw.author) doc.author = Forma.clean(raw.author, 80);
       if (raw.date) doc.date = Forma.clean(raw.date, 40);
-      return { doc: doc, provider: "ИИ", model: "GigaChat-2", note: "" };
+      return { doc: doc, provider: "ИИ", model: "", note: "" };
     } catch (error) {
       let reason;
       if (error && error.name === "AbortError") {

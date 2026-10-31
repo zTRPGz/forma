@@ -11,6 +11,5 @@ module.exports = function handler(req, res) {
   res.status(200).json({
     ok: true,
     key: Boolean(String(process.env.GIGACHAT_API_KEY || "").trim()),
-    model: giga.MODEL,
   });
 };

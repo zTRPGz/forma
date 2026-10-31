@@ -69,7 +69,7 @@ function request(options, body) {
 
 async function getToken(force) {
   const key = authKey();
-  if (!key) throw new Error("GigaChat не настроен: нет GIGACHAT_API_KEY");
+  if (!key) throw new Error("Сервис ИИ не настроен: нет ключа доступа");
 
   if (!force && token && Date.now() < tokenExpires - 60000) return token;
 
@@ -93,21 +93,21 @@ async function getToken(force) {
       body
     );
   } catch (error) {
-    throw new Error("OAuth GigaChat недоступен: " + error.message);
+    throw new Error("Сервис ИИ недоступен: " + error.message);
   }
 
   if (response.status !== 200) {
-    throw new Error("OAuth GigaChat вернул HTTP " + response.status + ": " + response.body.slice(0, 200));
+    throw new Error("Сервис ИИ вернул HTTP " + response.status + ": " + response.body.slice(0, 200));
   }
 
   let data;
   try {
     data = JSON.parse(response.body);
   } catch (error) {
-    throw new Error("OAuth GigaChat вернул не JSON: " + response.body.slice(0, 200));
+    throw new Error("Сервис ИИ вернул не JSON: " + response.body.slice(0, 200));
   }
   if (!data || typeof data.access_token !== "string" || !data.access_token) {
-    throw new Error("OAuth GigaChat не выдал access_token: " + response.body.slice(0, 200));
+    throw new Error("Сервис ИИ не выдал access_token: " + response.body.slice(0, 200));
   }
   token = data.access_token;
   tokenExpires = data.expires_at || Date.now() + 25 * 60 * 1000;
@@ -136,12 +136,12 @@ async function callChat(payload) {
     response = await sendChat(headers, body, 40000);
   } catch (error) {
     if (String(error.message) === "timeout") {
-      throw new Error("GigaChat не ответил за 40 секунд.");
+      throw new Error("Сервис ИИ не ответил за 40 секунд.");
     }
     try {
       response = await sendChat(headers, body, 15000);
     } catch (retryError) {
-      throw new Error("GigaChat недоступен: " + retryError.message);
+      throw new Error("Сервис ИИ недоступен: " + retryError.message);
     }
   }
 

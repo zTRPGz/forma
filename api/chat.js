@@ -36,6 +36,6 @@ module.exports = async function handler(req, res) {
     const answer = await giga.callChat(prepared.payload);
     res.status(answer.status).send(answer.body);
   } catch (error) {
-    res.status(502).json({ error: { message: error.message || "GigaChat недоступен." } });
+    res.status(502).json({ error: { message: error.message || "Сервис ИИ недоступен." } });
   }
 };

@@ -325,13 +325,13 @@
     badge.classList.toggle("badge--demo", state === "demo");
     if (state === "live") {
       badge.textContent = "ИИ · на связи";
-      badge.title = "GigaChat-2 отвечает с сервера «Тезиса».";
+      badge.title = "Сервис ИИ отвечает с сервера «Тезиса».";
     } else if (state === "demo") {
       badge.textContent = "ИИ · демо-режим";
       badge.title = reason || "Сервис ИИ недоступен — документы собираются в демо-режиме.";
     } else {
-      badge.textContent = "ИИ · GigaChat-2";
-      badge.title = "Содержание собирает GigaChat на сервере «Тезиса».";
+      badge.textContent = "ИИ · подключение";
+      badge.title = "Проверяю связь с сервисом ИИ.";
     }
   }
 
@@ -537,7 +537,7 @@
     setBusy(true);
     hideResult();
     showGen();
-    setStatus("GigaChat пишет содержание…");
+    setStatus("ИИ собирает содержание…");
 
     const slowHint = setTimeout(function () {
       if (targetFormat === "pptx" && targetSlides >= 12) {
