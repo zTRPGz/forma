@@ -70,6 +70,7 @@
   let customTheme = null;
   let templateMessage = null;
   let lastIdea = -1;
+  let badgeLocked = false;
 
   function setStatus(message, isError) {
     statusLine.textContent = message;
@@ -138,7 +139,7 @@
   function readStoredFormat() {
     try {
       const stored = localStorage.getItem(FORMAT_KEY);
-      return stored && NAMES[stored] ? stored : "docx";
+      return stored && Object.prototype.hasOwnProperty.call(NAMES, stored) ? stored : "docx";
     } catch (error) {
       return "docx";
     }
@@ -477,7 +478,17 @@
   if (templateFile) {
     templateFile.addEventListener("change", function () {
       const file = templateFile.files && templateFile.files[0];
-      if (file) attachTemplate(file);
+      if (!file) return;
+      if (busy) {
+        templateFile.value = "";
+        templateMessage = {
+          text: "Шаблон можно прикрепить, когда текущий файл соберётся.",
+          error: true,
+        };
+        updateTemplateNote();
+        return;
+      }
+      attachTemplate(file);
     });
   }
 
@@ -573,6 +584,7 @@
       const filename = "tezis-" + Forma.slugify(generated.doc.title) + "." + targetFormat;
 
       renderResult(generated, url, filename, seconds, targetFormat);
+      badgeLocked = true;
       if (generated.note) {
         setBadge("demo", generated.note);
         setStatus("Демо-документ готов — можно попробовать ещё раз.");
@@ -655,6 +667,12 @@
 
     const scroll = document.createElement("div");
     scroll.className = "preview-scroll";
+    scroll.tabIndex = 0;
+    scroll.setAttribute("role", "region");
+    scroll.setAttribute(
+      "aria-label",
+      "Предпросмотр " + NAMES[targetFormat] + " — прокрутите, чтобы увидеть весь макет"
+    );
     scroll.append(Forma.preview[targetFormat](doc));
 
     preview.append(caption, scroll);
@@ -680,6 +698,7 @@
   syncTopbar();
 
   Forma.ai.health().then(function (result) {
+    if (badgeLocked) return;
     setBadge(result.ok ? "live" : "demo", result.reason);
   });
 })();

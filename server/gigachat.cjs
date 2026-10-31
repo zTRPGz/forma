@@ -100,7 +100,15 @@ async function getToken(force) {
     throw new Error("OAuth GigaChat вернул HTTP " + response.status + ": " + response.body.slice(0, 200));
   }
 
-  const data = JSON.parse(response.body);
+  let data;
+  try {
+    data = JSON.parse(response.body);
+  } catch (error) {
+    throw new Error("OAuth GigaChat вернул не JSON: " + response.body.slice(0, 200));
+  }
+  if (!data || typeof data.access_token !== "string" || !data.access_token) {
+    throw new Error("OAuth GigaChat не выдал access_token: " + response.body.slice(0, 200));
+  }
   token = data.access_token;
   tokenExpires = data.expires_at || Date.now() + 25 * 60 * 1000;
   return token;
