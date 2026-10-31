@@ -345,11 +345,12 @@
     return Forma.themes ? Forma.themes.resolve(themeId) : themeId;
   }
 
-  function usesExactTemplate(selectedFormat, selectedThemeId) {
+  function usesExactTemplate(selectedFormat, selectedThemeId, attachedTemplate) {
+    const template = attachedTemplate === undefined ? customTemplate : attachedTemplate;
     return (
       selectedFormat === "pptx" &&
       Boolean(Forma.pptTemplates) &&
-      (selectedThemeId === "mfua" || (selectedThemeId === "custom" && Boolean(customTemplate)))
+      (selectedThemeId === "mfua" || (selectedThemeId === "custom" && Boolean(template)))
     );
   }
 
@@ -551,20 +552,12 @@
     button.addEventListener("click", function () {
       selectFormat(button.dataset.format, false);
     });
-    button.addEventListener(
-      "pointerenter",
-      function () {
-        Forma.deps.prefetch(button.dataset.format);
-      },
-      { once: true }
-    );
-    button.addEventListener(
-      "focus",
-      function () {
-        Forma.deps.prefetch(button.dataset.format);
-      },
-      { once: true }
-    );
+    // Через prefetchFormat: точный PowerPoint-шаблон библиотеку pptxgen не качает.
+    const warm = function () {
+      prefetchFormat(button.dataset.format);
+    };
+    button.addEventListener("pointerenter", warm, { once: true });
+    button.addEventListener("focus", warm, { once: true });
   });
 
   const ideasEl = document.getElementById("ideas");
@@ -799,10 +792,7 @@
     const targetThemeId = themeId;
     const targetCustomTemplate = targetThemeId === "custom" ? customTemplate : null;
     const targetCriteria = collectCriteria();
-    const exactPptx =
-      targetFormat === "pptx" &&
-      Boolean(Forma.pptTemplates) &&
-      (targetThemeId === "mfua" || (targetThemeId === "custom" && targetCustomTemplate));
+    const exactPptx = usesExactTemplate(targetFormat, targetThemeId, targetCustomTemplate);
 
     setBusy(true);
     hideResult();

@@ -474,7 +474,8 @@
   }
 
   function pptx(doc) {
-    if (doc && doc.templatePreview && doc.templatePreview.backgroundImage) {
+    // Файл собирается из шаблона и без картинки фона, поэтому и предпросмотр — по макету.
+    if (doc && doc.templatePreview) {
       return pptxTemplate(doc);
     }
     const root = node("div", "slides-preview");

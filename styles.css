@@ -8,7 +8,6 @@
   --navy: #101d2f;
   --accent: #c2410c;
   --accent-dark: #9a3412;
-  --accent-soft: #f6dfcf;
   --muted: #6d6254;
   --rule: #ddd2c1;
   --rule-soft: #ece4d8;
@@ -567,10 +566,6 @@ body::before {
   width: 56%;
 }
 
-.w58 {
-  width: 58%;
-}
-
 .w60 {
   width: 60%;
 }
@@ -581,10 +576,6 @@ body::before {
 
 .w72 {
   width: 72%;
-}
-
-.w74 {
-  width: 74%;
 }
 
 .w82 {
@@ -2664,6 +2655,11 @@ textarea:focus {
 }
 
 .pdf-page .doc-text {
+  font-size: 2.16cqw;
+}
+
+/* В PDF-файле пункт и абзац одного кегля — на экране тоже. */
+.pdf-page .doc-bullet {
   font-size: 2.16cqw;
 }
 

@@ -211,7 +211,6 @@ function normalizePayload(input) {
 }
 
 function allowedOrigin(origin) {
-  if (origin === SITE_ORIGIN) return origin;
   return ALLOWED_ORIGIN.some(function (pattern) {
     return pattern.test(origin);
   })
@@ -232,7 +231,6 @@ function corsHeaders(origin) {
 
 module.exports = {
   MODEL: MODEL,
-  authKey: authKey,
   corsHeaders: corsHeaders,
   normalizePayload: normalizePayload,
   callChat: callChat,

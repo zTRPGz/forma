@@ -9,6 +9,8 @@
 
   const FORMAT_NAMES = { docx: "Word-документ", pdf: "PDF-записка", pptx: "презентация" };
 
+  let modelName = "";
+
   function apiBase() {
     const host = global.location ? global.location.hostname : "";
     if (host === REMOTE_HOST) return "";
@@ -352,7 +354,7 @@
   }
 
   async function topUpSections(doc, options, messages, jsonMode, signal) {
-    const target = Math.max(1, (options && options.slides ? options.slides : 6) - 2);
+    const target = Math.max(1, options.slides - 2);
     cleanSections(doc);
     if (sectionCount(doc) >= target) return doc;
     if (!Array.isArray(doc.sections)) doc.sections = [];
@@ -768,16 +770,12 @@
       }
 
       if (!parsed) {
-        const error = new Error("ИИ вернул ответ не в формате JSON. Попробуйте сгенерировать ещё раз.");
-        error.code = "bad-json";
-        throw error;
+        throw new Error("ИИ вернул ответ не в формате JSON. Попробуйте сгенерировать ещё раз.");
       }
 
       cleanSections(parsed);
       if (!sectionCount(parsed)) {
-        const error = new Error("ИИ вернул пустой документ. Показан демонстрационный вариант.");
-        error.code = "bad-schema";
-        throw error;
+        throw new Error("ИИ вернул пустой документ. Показан демонстрационный вариант.");
       }
 
       if (isThin(parsed, format, options)) {
@@ -800,9 +798,7 @@
       if (format === "pptx" && options && options.slides) {
         parsed = await topUpSections(parsed, options, messages, jsonMode, controller.signal);
         if (sectionCount(parsed) < options.slides - 2) {
-          const error = new Error("ИИ вернул меньше разделов, чем нужно для выбранного числа слайдов.");
-          error.code = "short-deck";
-          throw error;
+          throw new Error("ИИ вернул меньше разделов, чем нужно для выбранного числа слайдов.");
         }
       }
 
@@ -828,7 +824,8 @@
       const data = await response.json();
       if (!data || data.ok !== true) return { ok: false, reason: "Сервис ИИ ответил неожиданно." };
       if (!data.key) return { ok: false, reason: "На сервере не настроен ключ ИИ." };
-      return { ok: true, model: String(data.model || "") };
+      modelName = String(data.model || "");
+      return { ok: true, model: modelName };
     } catch (error) {
       return { ok: false, reason: "Не удалось связаться с сервисом ИИ." };
     } finally {
@@ -845,7 +842,7 @@
       const doc = Forma.normalize(raw, format, settings);
       if (raw.author) doc.author = Forma.clean(raw.author, 80);
       if (raw.date) doc.date = Forma.clean(raw.date, 40);
-      return { doc: doc, provider: "ИИ", model: "", note: "" };
+      return { doc: doc, provider: "ИИ", model: modelName, note: "" };
     } catch (error) {
       let reason;
       if (error && error.name === "AbortError") {

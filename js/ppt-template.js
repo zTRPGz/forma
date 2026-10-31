@@ -15,8 +15,6 @@
     slide: OFFICE_REL_NS + "/slide",
     slideLayout: OFFICE_REL_NS + "/slideLayout",
     notesSlide: OFFICE_REL_NS + "/notesSlide",
-    notesMaster: OFFICE_REL_NS + "/notesMaster",
-    handoutMaster: OFFICE_REL_NS + "/handoutMaster",
     image: OFFICE_REL_NS + "/image",
   };
   const SLIDE_CONTENT_TYPE =
@@ -101,7 +99,6 @@
     if (end < 0) throw new Error("это не PowerPoint-шаблон");
     const total = readU16(bytes, end + 10);
     if (hasZip64Marker(total)) throw new Error("слишком большой PowerPoint-шаблон");
-    const entries = [];
     const map = new Map();
     let offset = readU32(bytes, end + 16);
     const decoder = new TextDecoder("utf-8");
@@ -127,20 +124,21 @@
       const start = localOffset + 30 + localName + localExtra;
 
       if (!map.has(name)) {
-        const value = await inflateEntry(bytes, {
-          method: method,
-          start: start,
-          compressed: compressed,
-        });
-        entries.push([name, value]);
-        map.set(name, value);
+        map.set(
+          name,
+          await inflateEntry(bytes, {
+            method: method,
+            start: start,
+            compressed: compressed,
+          })
+        );
       }
 
       offset += 46 + nameLength + extraLength + commentLength;
     }
 
     if (!map.has("[Content_Types].xml")) throw new Error("в шаблоне нет описания содержимого");
-    return { entries: entries, map: map };
+    return { map: map };
   }
 
   let crcTable = null;
@@ -775,9 +773,6 @@
       if (section.paragraphs.length || section.bullets.length || lines.length) {
         slides.push({ title: section.heading, lines: lines });
       }
-      if (section.table && !lines.length) {
-        slides.push({ title: section.heading, lines: sectionLines(section) });
-      }
     });
     slides.push({ title: doc.title, lines: [], photo: true });
     return slides;
@@ -1082,7 +1077,6 @@
     pptTemplates: {
       render: render,
       fitScale: fitScale,
-      loadBuiltin: loadBuiltin,
       selectedBytes: selectedBytes,
       previewAssets: previewAssets,
     },

@@ -37,7 +37,6 @@
       // async=false сохраняет порядок исполнения для динамических скриптов:
       // шрифты должны подключиться к уже существующему pdfMake.
       script.async = false;
-      script.dataset.formaLib = src;
       script.onload = function () {
         resolve();
       };

@@ -391,7 +391,6 @@
       id: "custom",
       name: name || "Свой шаблон",
       note: "Цвета и шрифты из файла",
-      custom: true,
       ink: ink,
       navy: navy,
       accent: accent,

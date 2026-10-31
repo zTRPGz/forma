@@ -8,17 +8,7 @@
     !!process.versions.node &&
     typeof window === "undefined";
 
-  const INK = "1F2A37";
-  const NAVY = "16243A";
-  const ACCENT = "B45309";
-  const MUTED = "6B5E50";
-  const RULE = "D9CFC1";
   const WHITE = "FFFFFF";
-  const ALT = "F3EDE4";
-  const LIGHT_TEXT = "EADFD0";
-  const COVER_META = "9AA7B8";
-  const HEAD_FONT = "Georgia";
-  const BODY_FONT = "Segoe UI";
   const BULLET_REF = "forma-bullets";
 
   const PPT_W = 13.333;
@@ -26,30 +16,24 @@
   const PPT_M = 0.9;
   const PPT_CONTENT_W = PPT_W - 2 * PPT_M;
   const PDF_CONTENT_W = 471;
-  const PDF_INK = "#1F2A37";
-  const PDF_NAVY = "#16243A";
-  const PDF_ACCENT = "#B45309";
-  const PDF_MUTED = "#6B5E50";
-  const PDF_RULE = "#D9CFC1";
   const PDF_WHITE = "#FFFFFF";
-  const PDF_ALT = "#F3EDE4";
 
   function metaLine(doc) {
     return [doc.author, doc.date].filter(Boolean).join(" · ");
   }
 
+  // Повторяет пресет «Бумага»: сюда попадаем только при незагруженном модуле тем.
   const FALLBACK_THEME = {
-    ink: INK,
-    navy: NAVY,
-    accent: ACCENT,
-    muted: MUTED,
-    rule: RULE,
-    alt: ALT,
-    light: LIGHT_TEXT,
-    meta: COVER_META,
-    sheet: WHITE,
-    headFont: HEAD_FONT,
-    bodyFont: BODY_FONT,
+    ink: "17212C",
+    navy: "101D2F",
+    accent: "C2410C",
+    muted: "6D6254",
+    rule: "DDD2C1",
+    alt: "F3EDE4",
+    light: "E9E0D2",
+    meta: "9AA7B8",
+    headFont: "Georgia",
+    bodyFont: "Segoe UI",
   };
 
   function themeOf(doc) {
@@ -505,18 +489,20 @@
       fill: { color: T.alt },
       line: { color: T.rule, width: 1.25, dashType: "dash" },
     });
-    pptxText(slide, x, y + h / 2 - 0.48, w, 0.3, "ФОТО", {
-      fontSize: 10.5,
-      bold: true,
-      color: T.muted,
-      align: "center",
-      charSpacing: 1.5,
-    }, T);
-    pptxText(slide, x, y + h / 2 - 0.12, w, 0.3, "место для изображения", {
-      fontSize: 8.5,
-      color: T.muted,
-      align: "center",
-    }, T);
+    // Одна рамка по всему кадру с valign=middle: подпись в центре, как в предпросмотре.
+    pptxText(
+      slide,
+      x,
+      y,
+      w,
+      h,
+      [
+        { text: "ФОТО", options: { fontSize: 10.5, bold: true, charSpacing: 1.5, breakLine: true } },
+        { text: "место для изображения", options: { fontSize: 8.5 } },
+      ],
+      { color: T.muted, align: "center", valign: "middle" },
+      T
+    );
   }
 
   function pptxContentSlide(pptx, RECT, section, page, T, photo, photoSlot) {

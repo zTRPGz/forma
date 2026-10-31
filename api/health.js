@@ -10,6 +10,7 @@ module.exports = function handler(req, res) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.status(200).json({
     ok: true,
+    model: giga.MODEL,
     key: Boolean(String(process.env.GIGACHAT_API_KEY || "").trim()),
   });
 };
