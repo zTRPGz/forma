@@ -86,6 +86,11 @@
     return String(value || "").replace(/\s*:$/, "").trim();
   }
 
+  function titleFromTopic(topic) {
+    const base = tidy(clean(topic, LIMITS.title)).replace(/[.!?]+$/, "");
+    return base ? base.charAt(0).toUpperCase() + base.slice(1) : "";
+  }
+
   function normalize(raw, fmt, options) {
     const source = raw && typeof raw === "object" ? raw : {};
     const settings = options && typeof options === "object" ? options : {};
@@ -144,7 +149,11 @@
     }
 
     return {
-      title: tidy(clean(source.title, LIMITS.title)) || "Без названия",
+      // ИИ иногда присылает только разделы: без заголовка из темы первая и
+      // последняя страницы выходят «Без названия».
+      title: tidy(clean(source.title, LIMITS.title)) ||
+        titleFromTopic(settings.topic) ||
+        "Без названия",
       subtitle: clean(source.subtitle, 120),
       author: clean(source.author, 80),
       date: clean(source.date, 40) || todayRu(),
@@ -162,8 +171,7 @@
   };
 
   function demo(topic, fmt, options) {
-    const base = String(topic || "").trim().replace(/[.!?]+$/, "");
-    const title = base ? base.charAt(0).toUpperCase() + base.slice(1) : "Новый документ";
+    const title = titleFromTopic(topic) || "Новый документ";
     const tableSection =
       fmt === "pptx"
         ? {

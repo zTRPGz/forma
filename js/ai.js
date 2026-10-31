@@ -835,11 +835,12 @@
   }
 
   async function generateContent(topic, format, options) {
-    const demoDoc = Forma.normalize(Forma.demo(topic, format, options), format, options);
+    const settings = Object.assign({}, options, { topic: topic });
+    const demoDoc = Forma.normalize(Forma.demo(topic, format, options), format, settings);
 
     try {
       const raw = await requestCompletion(topic, format, options);
-      const doc = Forma.normalize(raw, format, options);
+      const doc = Forma.normalize(raw, format, settings);
       if (raw.author) doc.author = Forma.clean(raw.author, 80);
       if (raw.date) doc.date = Forma.clean(raw.date, 40);
       return { doc: doc, provider: "ИИ", model: "", note: "" };
