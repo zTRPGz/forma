@@ -473,6 +473,9 @@
   }
 
   function pptx(doc) {
+    if (doc && doc.templatePreview && doc.templatePreview.backgroundImage) {
+      return pptxTemplate(doc);
+    }
     const root = node("div", "slides-preview");
     applyTheme(root, doc);
     root.append(pptxCover(doc));
@@ -490,6 +493,64 @@
     });
 
     root.append(pptxFinal(doc));
+    return root;
+  }
+
+  function tplLines(section) {
+    const lines = [];
+    section.paragraphs.forEach(function (text) {
+      lines.push({ level: 0, text: text });
+    });
+    section.bullets.forEach(function (text) {
+      lines.push({ level: 1, text: text });
+    });
+    if (section.table) {
+      section.table.headers.forEach(function (header, index) {
+        const value = section.table.rows.map(function (row) {
+          return row[index] || "";
+        });
+        lines.push({ level: 1, text: [header].concat(value).filter(Boolean).join(" — ") });
+      });
+    }
+    return lines;
+  }
+
+  function pptxTemplate(doc) {
+    const assets = doc.templatePreview;
+    const aspect = assets.aspect || 16 / 9;
+    const root = node("div", "slides-preview slides-preview--tpl");
+    applyTheme(root, doc);
+
+    function slide(title, lines, page) {
+      const el = node("div", "slide slide--tpl");
+      el.style.aspectRatio = String(aspect);
+      el.style.backgroundImage = 'url("' + assets.backgroundImage + '")';
+      el.append(node("p", "tpl-title", title));
+      if (lines && lines.length) {
+        const body = node("div", "tpl-body");
+        lines.forEach(function (line) {
+          body.append(
+            node("p", "tpl-line" + (line.level ? " tpl-line--sub" : ""), line.text)
+          );
+        });
+        el.append(body);
+      }
+      el.append(node("span", "tpl-page", String(page).padStart(2, "0")));
+      return el;
+    }
+
+    let page = 1;
+    const cover = [doc.subtitle, doc.date]
+      .filter(Boolean)
+      .map(function (text) {
+        return { level: 0, text: text };
+      });
+    root.append(slide(doc.title, cover, page++));
+    doc.sections.forEach(function (section) {
+      const lines = tplLines(section);
+      root.append(slide(section.heading, lines, page++));
+    });
+    root.append(slide(doc.title, [], page++));
     return root;
   }
 

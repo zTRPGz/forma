@@ -841,7 +841,17 @@
       const generated = await Forma.ai.generateContent(value, targetFormat, options);
 
       const templateBytes = await templatePromise;
-      if (templateBytes) generated.doc.templateBytes = templateBytes;
+      if (templateBytes) {
+        generated.doc.templateBytes = templateBytes;
+        if (Forma.pptTemplates && Forma.pptTemplates.previewAssets) {
+          try {
+            generated.doc.templatePreview =
+              await Forma.pptTemplates.previewAssets(templateBytes);
+          } catch (error) {
+            generated.doc.templatePreview = null;
+          }
+        }
+      }
 
       if (exactPptx) {
         setStatus("Подставляю текст в исходный шаблон…");
@@ -1394,6 +1404,7 @@
     }
     if (photo) nextDoc.photo = photo;
     if (current.doc.templateBytes) nextDoc.templateBytes = current.doc.templateBytes;
+    if (current.doc.templatePreview) nextDoc.templatePreview = current.doc.templatePreview;
 
     setEditorBusy(true, "Собираю обновлённый файл…");
     try {

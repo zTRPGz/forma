@@ -299,7 +299,11 @@
     const bytes = entries.map.get(partName);
     if (!bytes) return;
     packageMap.set(partName, bytes);
-    relationshipsFor(entries, partName).forEach(function (relationship) {
+    const relName = relationshipPath(partName);
+    const relBytes = entries.map.get(relName);
+    const relationships = relBytes ? parseRelationships(decodeText(relBytes)) : [];
+    if (relBytes) packageMap.set(relName, relBytes);
+    relationships.forEach(function (relationship) {
       if (
         relationship.type === REL_TYPES.slide ||
         relationship.type === REL_TYPES.notesSlide
@@ -403,20 +407,51 @@
     );
   }
 
-  function titlePlaceholder(title, slots) {
+  function xfrm(frame) {
+    if (!frame) return "";
+    return (
+      "<a:xfrm><a:off x=\"" +
+      Math.round(frame.x) +
+      "\" y=\"" +
+      Math.round(frame.y) +
+      '"/><a:ext cx="' +
+      Math.round(frame.w) +
+      "\" cy=\"" +
+      Math.round(frame.h) +
+      '"/></a:xfrm>'
+    );
+  }
+
+  function contentFrames(presentationXml) {
+    const match = /<p:sldSz[^>]*cx="(\d+)"[^>]*cy="(\d+)"/.exec(presentationXml);
+    if (!match) return null;
+    const w = Number(match[1]);
+    const h = Number(match[2]);
+    if (!w || !h) return null;
+    const side = w * 0.05;
+    const inner = w - side * 2;
+    return {
+      title: { x: side, y: h * 0.18, w: inner, h: h * 0.11 },
+      body: { x: side, y: h * 0.32, w: inner, h: h * 0.52 },
+    };
+  }
+
+  function titlePlaceholder(title, slots, frame) {
     return (
       "<p:sp>" +
       '<p:nvSpPr><p:cNvPr id="2" name="Заголовок"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>' +
       '<p:nvPr><p:ph type="' +
       (slots.title || "title") +
-      '"/></p:nvPr></p:nvSpPr><p:spPr/>' +
+      '"/></p:nvPr></p:nvSpPr><p:spPr>' +
+      xfrm(frame) +
+      "</p:spPr>" +
       "<p:txBody><a:bodyPr><a:normAutofit/></a:bodyPr><a:lstStyle/>" +
       paragraph(title, 0) +
       "</p:txBody></p:sp>"
     );
   }
 
-  function bodyPlaceholder(lines, slots) {
+  function bodyPlaceholder(lines, slots, frame) {
     const content = lines
       .map(function (line) {
         return paragraph(line.text, line.level);
@@ -429,7 +464,9 @@
       '<p:nvSpPr><p:cNvPr id="3" name="Содержимое"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>' +
       '<p:nvPr><p:ph idx="' +
       (slots.bodyIdx || "1") +
-      '"/></p:nvPr></p:nvSpPr><p:spPr/>' +
+      '"/></p:nvPr></p:nvSpPr><p:spPr>' +
+      xfrm(frame) +
+      "</p:spPr>" +
       "<p:txBody><a:bodyPr><a:normAutofit/></a:bodyPr><a:lstStyle/>" +
       content +
       "</p:txBody></p:sp>"
@@ -454,7 +491,7 @@
     );
   }
 
-  function slideXml(title, lines, position, slots) {
+  function slideXml(title, lines, position, slots, frames) {
     return (
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
       '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' +
@@ -463,8 +500,8 @@
       '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>' +
       '<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/>' +
       '<a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>' +
-      titlePlaceholder(title, slots) +
-      bodyPlaceholder(lines, slots) +
+      titlePlaceholder(title, slots, frames && frames.title) +
+      bodyPlaceholder(lines, slots, frames && frames.body) +
       numberPlaceholder(position, slots) +
       "</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>"
     );
@@ -636,6 +673,7 @@
     }
     const layoutPart = layout.part;
     const slots = layout.slots;
+    const frames = contentFrames(decodeText(presentationXml));
 
     const packageMap = new Map();
     const carriedRels = keptPresentationRels(entries);
@@ -643,14 +681,14 @@
       const target = resolvePath("ppt/", relationship.target);
       if (target.startsWith("ppt/")) preservePart(entries, target, packageMap);
     });
-    packageMap.set(layoutPart, entries.map.get(layoutPart));
+    preservePart(entries, layoutPart, packageMap);
 
     const firstRelId = nextRelationshipId(carriedRels);
     const slides = documentSlides(doc);
     const slideIds = slides.map(function (slide, index) {
       const name = "ppt/slides/slide" + (index + 1) + ".xml";
       const relId = "rId" + (firstRelId + index);
-      packageMap.set(name, encodeText(slideXml(slide.title, slide.lines, index + 1, slots)));
+      packageMap.set(name, encodeText(slideXml(slide.title, slide.lines, index + 1, slots, frames)));
       packageMap.set(relationshipPath(name), encodeText(slideRelsXml(layoutPart)));
       return { id: 256 + index, relId: relId };
     });
@@ -725,11 +763,68 @@
     return null;
   }
 
+  function toDataUrl(bytes, partName) {
+    const ext = (String(partName).split(".").pop() || "jpeg").toLowerCase();
+    const mime =
+      ext === "png"
+        ? "image/png"
+        : ext === "gif"
+          ? "image/gif"
+          : ext === "svg"
+            ? "image/svg+xml"
+            : "image/jpeg";
+    if (typeof global.Buffer === "function") {
+      return "data:" + mime + ";base64," + global.Buffer.from(bytes).toString("base64");
+    }
+    let binary = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return "data:" + mime + ";base64," + global.btoa(binary);
+  }
+
+  async function previewAssets(templateBytes) {
+    if (!templateBytes) return null;
+    const source =
+      templateBytes instanceof Uint8Array
+        ? templateBytes
+        : new Uint8Array(templateBytes);
+    let entries;
+    try {
+      entries = await readZip(source);
+    } catch (error) {
+      return null;
+    }
+    const presentationXml = entries.map.get("ppt/presentation.xml");
+    if (!presentationXml) return null;
+    const sizeMatch = /<p:sldSz[^>]*cx="(\d+)"[^>]*cy="(\d+)"/.exec(decodeText(presentationXml));
+    const aspect = sizeMatch ? Number(sizeMatch[1]) / Number(sizeMatch[2]) : 16 / 9;
+    const masterRel = presentationRels(entries).filter(function (relationship) {
+      return relationship.type === REL_TYPES.slideMaster;
+    })[0];
+    if (!masterRel) return { aspect: aspect, backgroundImage: null };
+    const masterPart = resolvePath("ppt/", masterRel.target);
+    const masterXml = entries.map.get(masterPart);
+    if (!masterXml) return { aspect: aspect, backgroundImage: null };
+    const bgMatch = /<p:bg>[\s\S]*?<a:blip[^>]*r:embed="([^"]+)"/.exec(decodeText(masterXml));
+    if (!bgMatch) return { aspect: aspect, backgroundImage: null };
+    const imageRel = relationshipsFor(entries, masterPart).filter(function (relationship) {
+      return relationship.id === bgMatch[1];
+    })[0];
+    if (!imageRel) return { aspect: aspect, backgroundImage: null };
+    const imagePart = resolvePath(directoryOf(masterPart), imageRel.target);
+    const imageBytes = entries.map.get(imagePart);
+    if (!imageBytes) return { aspect: aspect, backgroundImage: null };
+    return { aspect: aspect, backgroundImage: toDataUrl(imageBytes, imagePart) };
+  }
+
   Object.assign(Forma, {
     pptTemplates: {
       render: render,
       loadBuiltin: loadBuiltin,
       selectedBytes: selectedBytes,
+      previewAssets: previewAssets,
     },
   });
 })(typeof window !== "undefined" ? window : globalThis);

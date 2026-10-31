@@ -2831,6 +2831,66 @@ textarea:focus {
   object-fit: cover;
 }
 
+.slide--tpl {
+  background-color: #fff;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
+  border: 1px solid #c9d4e0;
+}
+
+.tpl-title {
+  position: absolute;
+  top: 18%;
+  left: 5%;
+  right: 5%;
+  margin: 0;
+  text-align: center;
+  font-family: var(--sans);
+  font-size: 3.6cqw;
+  font-weight: 700;
+  line-height: 1.12;
+  color: #14243a;
+}
+
+.tpl-body {
+  position: absolute;
+  top: 33%;
+  left: 6%;
+  right: 6%;
+  bottom: 14%;
+  overflow: hidden;
+}
+
+.tpl-line {
+  margin: 0 0 0.7em;
+  font-family: var(--sans);
+  font-size: 2.1cqw;
+  line-height: 1.4;
+  color: #1f2a37;
+}
+
+.tpl-line--sub {
+  padding-left: 3.2cqw;
+  position: relative;
+  color: #33414f;
+}
+
+.tpl-line--sub::before {
+  content: "–";
+  position: absolute;
+  left: 0.8cqw;
+}
+
+.tpl-page {
+  position: absolute;
+  right: 7.5%;
+  bottom: 5.5%;
+  font-family: var(--sans);
+  font-size: 1.8cqw;
+  color: #5a6b7d;
+}
+
 .slide-p {
   margin: 0 0 0.62em;
   line-height: 1.16;
