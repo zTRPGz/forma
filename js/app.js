@@ -104,6 +104,7 @@
   let slides = 6;
   let themeId = "paper";
   let customTheme = null;
+  let customTemplate = null;
   let templateMessage = null;
   let criteria = Object.assign({}, CRITERIA_DEFAULTS);
   let lastIdea = -1;
@@ -113,6 +114,8 @@
   let photoDraft = null;
   let photoTimer = null;
   let editorBusy = false;
+  let photoLoadToken = 0;
+  let photoDirty = false;
 
   function setStatus(message, isError) {
     statusLine.textContent = message;
@@ -297,13 +300,13 @@
     updateCriteriaSummary();
   }
 
-  function syncCriteria() {
+  function syncCriteria(store) {
     criteriaPairs().forEach(function (pair) {
       criteria[pair[1]] = pair[0].value;
     });
     criteria.note = criteriaNote.value.replace(/\s+/g, " ").trim().slice(0, 200);
     updateCriteriaSummary();
-    storeCriteria();
+    if (store) storeCriteria();
   }
 
   function collectCriteria() {
@@ -342,6 +345,18 @@
     return Forma.themes ? Forma.themes.resolve(themeId) : themeId;
   }
 
+  function usesExactTemplate(selectedFormat, selectedThemeId) {
+    return (
+      selectedFormat === "pptx" &&
+      Boolean(Forma.pptTemplates) &&
+      (selectedThemeId === "mfua" || (selectedThemeId === "custom" && Boolean(customTemplate)))
+    );
+  }
+
+  function prefetchFormat(selectedFormat) {
+    if (!usesExactTemplate(selectedFormat, themeId)) Forma.deps.prefetch(selectedFormat);
+  }
+
   function applySlidesUI() {
     slideButtons.forEach(function (button) {
       const active = Number(button.dataset.slides) === slides;
@@ -367,13 +382,28 @@
     if (themeId === "custom" && customTheme) {
       templateNote.hidden = false;
       templateNote.classList.remove("is-error");
-      templateNote.textContent =
-        "Шаблон «" + customTheme.name + "» прикреплён: цвета и шрифты взяты из файла.";
+      templateNote.textContent = customTemplate
+        ? "Шаблон «" + customTheme.name + "» прикреплён: PowerPoint сохранит его макет и подставит текст."
+        : "Шаблон «" + customTheme.name + "» прикреплён: цвета и шрифты взяты из файла.";
       return;
     }
     templateNote.hidden = true;
     templateNote.textContent = "";
     templateNote.classList.remove("is-error");
+  }
+
+  function selectTemplate(key) {
+    themeId = key;
+    templateMessage = null;
+    Array.prototype.forEach.call(templateList.querySelectorAll(".template"), function (chip) {
+      const activeTemplate = chip.dataset.theme === key;
+      chip.classList.toggle("is-active", activeTemplate);
+      chip.setAttribute("aria-pressed", String(activeTemplate));
+    });
+    updateTemplateNote();
+    storeTheme();
+    hideResult();
+    setStatus("");
   }
 
   function templateChip(theme, isCustom) {
@@ -404,13 +434,8 @@
 
     button.append(swatch, name);
     button.addEventListener("click", function () {
-      themeId = key;
-      templateMessage = null;
-      renderTemplates();
-      updateTemplateNote();
-      storeTheme();
-      hideResult();
-      setStatus("");
+      if (busy || editorBusy) return;
+      selectTemplate(key);
     });
     return button;
   }
@@ -425,13 +450,15 @@
   }
 
   async function attachTemplate(file) {
-    if (!file || !Forma.themes || busy) return;
+    if (!file || !Forma.themes || busy || editorBusy) return;
     templateAttach.classList.add("is-busy");
     attachLabel.textContent = "Читаю шаблон…";
     templateFile.disabled = true;
     try {
-      const theme = await Forma.themes.fromTemplate(file);
-      customTheme = theme;
+      const template = await Forma.themes.fromTemplate(file);
+      if (busy || editorBusy) return;
+      customTheme = template.theme;
+      customTemplate = template.bytes || null;
       themeId = "custom";
       templateMessage = null;
       renderTemplates();
@@ -479,12 +506,12 @@
   }
 
   function selectFormat(next, moveFocus) {
-    if (!NAMES[next] || busy) return;
+    if (!NAMES[next] || busy || editorBusy) return;
     const changed = format !== next;
     format = next;
     applyFormatUI();
     storeFormat();
-    Forma.deps.prefetch(format);
+    prefetchFormat(format);
 
     if (moveFocus) {
       const button = formatButtons.find(function (item) {
@@ -548,7 +575,7 @@
       topic.value = button.dataset.topic || "";
       updateCounter();
       topic.focus();
-      Forma.deps.prefetch(format);
+      prefetchFormat(format);
     });
   }
 
@@ -571,7 +598,7 @@
   });
 
   function selectSlides(next, moveFocus) {
-    if (!next || next === slides || busy) return;
+    if (!next || next === slides || busy || editorBusy) return;
     slides = next;
     applySlidesUI();
     storeSlides();
@@ -630,7 +657,7 @@
   topic.addEventListener(
     "focus",
     function () {
-      Forma.deps.prefetch(format);
+      prefetchFormat(format);
     },
     { once: true }
   );
@@ -643,9 +670,16 @@
   });
 
   criteriaPairs().forEach(function (pair) {
-    pair[0].addEventListener("change", syncCriteria);
+    pair[0].addEventListener("change", function () {
+      syncCriteria(true);
+    });
   });
-  criteriaNote.addEventListener("input", syncCriteria);
+  criteriaNote.addEventListener("input", function () {
+    syncCriteria(false);
+  });
+  criteriaNote.addEventListener("change", function () {
+    syncCriteria(true);
+  });
   criteriaReset.addEventListener("click", resetCriteria);
 
   generateButton.addEventListener("click", generate);
@@ -687,6 +721,13 @@
     if (index < 0 || current.length <= 1) return;
     current.splice(index, 1);
     renderEditSections(current);
+    const targetIndex = Math.min(index, current.length - 1);
+    const targetCard = targetIndex >= 0 ? editSections.children[targetIndex] : null;
+    const targetInput = targetCard && targetCard.querySelector(".editor-heading");
+    if (targetInput) {
+      targetInput.focus();
+      targetCard.scrollIntoView({ block: "nearest" });
+    }
     setEditorMessage("");
   });
 
@@ -697,6 +738,7 @@
 
   photoZoom.addEventListener("input", function () {
     if (!photoDraft) return;
+    photoDirty = true;
     photoDraft.zoom = Number(photoZoom.value);
     photoZoomValue.textContent = photoZoom.value + " %";
     schedulePhotoPreview();
@@ -704,6 +746,7 @@
 
   photoX.addEventListener("input", function () {
     if (!photoDraft) return;
+    photoDirty = true;
     photoDraft.fx = Number(photoX.value);
     photoXValue.textContent = photoX.value + " %";
     schedulePhotoPreview();
@@ -711,6 +754,7 @@
 
   photoY.addEventListener("input", function () {
     if (!photoDraft) return;
+    photoDirty = true;
     photoDraft.fy = Number(photoY.value);
     photoYValue.textContent = photoY.value + " %";
     schedulePhotoPreview();
@@ -718,7 +762,9 @@
 
   photoRemove.addEventListener("click", function () {
     if (editorBusy) return;
+    const hadPhoto = Boolean(active && active.photo);
     resetPhotoUI();
+    photoDirty = hadPhoto;
     setPhotoNote("Фотография убрана — на слайдах вернётся рамка «Фото».");
   });
 
@@ -733,7 +779,7 @@
   });
 
   async function generate() {
-    if (busy) return;
+    if (busy || editorBusy) return;
 
     let value = topic.value.trim();
     if (!value) {
@@ -750,7 +796,13 @@
     const targetFormat = format;
     const targetSlides = slides;
     const targetTheme = currentTheme();
+    const targetThemeId = themeId;
+    const targetCustomTemplate = targetThemeId === "custom" ? customTemplate : null;
     const targetCriteria = collectCriteria();
+    const exactPptx =
+      targetFormat === "pptx" &&
+      Boolean(Forma.pptTemplates) &&
+      (targetThemeId === "mfua" || (targetThemeId === "custom" && targetCustomTemplate));
 
     setBusy(true);
     hideResult();
@@ -763,14 +815,19 @@
       }
     }, 10000);
 
-    const depsReady = Forma.deps.ensure(targetFormat).then(
-      function () {
-        return null;
-      },
-      function (error) {
-        return error;
-      }
-    );
+    const templatePromise = Forma.pptTemplates
+      ? Forma.pptTemplates.selectedBytes(targetFormat, targetThemeId, targetCustomTemplate)
+      : Promise.resolve(null);
+    const depsReady = exactPptx
+      ? Promise.resolve(null)
+      : Forma.deps.ensure(targetFormat).then(
+          function () {
+            return null;
+          },
+          function (error) {
+            return error;
+          }
+        );
 
     const started = performance.now();
     let failed = false;
@@ -783,12 +840,19 @@
       };
       const generated = await Forma.ai.generateContent(value, targetFormat, options);
 
-      if (!Forma.deps.ready(targetFormat)) setStatus("Загружаю модуль вёрстки…");
-      setGenStage("layout");
-      const depsError = await depsReady;
-      if (depsError) {
-        throw new Error("модуль вёрстки не загрузился — проверьте, что папка vendor загружена полностью, и обновите страницу.");
+      const templateBytes = await templatePromise;
+      if (templateBytes) generated.doc.templateBytes = templateBytes;
+
+      if (exactPptx) {
+        setStatus("Подставляю текст в исходный шаблон…");
+      } else {
+        if (!Forma.deps.ready(targetFormat)) setStatus("Загружаю модуль вёрстки…");
+        const depsError = await depsReady;
+        if (depsError) {
+          throw new Error("модуль вёрстки не загрузился — проверьте, что папка vendor загружена полностью, и обновите страницу.");
+        }
       }
+      setGenStage("layout");
 
       clearTimeout(slowHint);
       setStatus("Собираю файл…");
@@ -915,9 +979,8 @@
       "Предпросмотр " + NAMES[targetFormat] + " — прокрутите, чтобы увидеть весь макет"
     );
     scroll.append(Forma.preview[targetFormat](doc));
-    if (keepScroll) scroll.scrollTop = keepScroll;
-
     preview.append(caption, scroll);
+    if (keepScroll) scroll.scrollTop = keepScroll;
 
     result.hidden = false;
     if (scrollToResult) result.scrollIntoView({ block: "start" });
@@ -1080,11 +1143,12 @@
     editSubtitle.value = active.doc.subtitle || "";
     renderEditSections();
     resetPhotoUI();
-    photoEditor.hidden = active.format !== "pptx";
+    const usePhoto = active.format === "pptx" && !active.doc.templateBytes;
+    photoEditor.hidden = !usePhoto;
     setEditorMessage("");
     setEditorBusy(false);
-    if (active.format === "pptx" && active.photo && active.photo.data) {
-      loadPhotoSource(active.photo.data, active.photo.name);
+    if (usePhoto && active.photo && active.photo.data) {
+      loadPhotoSource(active.photo.data, active.photo.name, false);
     }
     editorEl.hidden = false;
     editOpen.setAttribute("aria-expanded", "true");
@@ -1118,7 +1182,9 @@
   }
 
   function resetPhotoUI() {
+    photoLoadToken += 1;
     photoDraft = null;
+    photoDirty = false;
     clearTimeout(photoTimer);
     photoFile.disabled = false;
     photoPreview.hidden = true;
@@ -1197,11 +1263,12 @@
     updatePhotoPreview();
   }
 
-  function loadPhotoSource(src, name) {
+  function loadPhotoSource(src, name, markDirty) {
+    const token = ++photoLoadToken;
     const img = new Image();
     editApply.disabled = true;
     img.onload = function () {
-      if (editorEl.hidden) return;
+      if (token !== photoLoadToken || editorEl.hidden) return;
       photoDraft = {
         img: img,
         width: img.naturalWidth,
@@ -1211,11 +1278,13 @@
         fy: 50,
         name: name || "фотография",
       };
+      photoDirty = Boolean(markDirty);
       photoFile.disabled = false;
       editApply.disabled = editorBusy;
       syncPhotoUI();
     };
     img.onerror = function () {
+      if (token !== photoLoadToken) return;
       photoFile.disabled = false;
       editApply.disabled = editorBusy;
       if (editorEl.hidden) return;
@@ -1225,7 +1294,7 @@
   }
 
   function handlePhotoFile(file) {
-    if (!file) return;
+    if (!file || editorBusy) return;
     if (["image/jpeg", "image/png", "image/webp"].indexOf(file.type) < 0) {
       setPhotoNote("Подойдёт JPEG, PNG или WebP.", true);
       photoFile.value = "";
@@ -1236,15 +1305,17 @@
       photoFile.value = "";
       return;
     }
+    const token = ++photoLoadToken;
     setPhotoNote("Читаю фотографию…");
     editApply.disabled = true;
     photoFile.disabled = true;
     const reader = new FileReader();
     reader.onload = function () {
-      if (editorEl.hidden) return;
-      loadPhotoSource(String(reader.result), file.name);
+      if (token !== photoLoadToken || editorEl.hidden) return;
+      loadPhotoSource(String(reader.result), file.name, true);
     };
     reader.onerror = function () {
+      if (token !== photoLoadToken) return;
       photoFile.disabled = false;
       editApply.disabled = editorBusy;
       setPhotoNote("Не удалось прочитать файл.", true);
@@ -1253,9 +1324,18 @@
     reader.readAsDataURL(file);
   }
 
-  async function applyEdits() {
-    if (!active || editorBusy || busy) return;
+  function pptxSlideCount(sections) {
+    return sections.reduce(function (total, section) {
+      const textSlides = section.paragraphs.length || section.bullets.length ? 1 : 0;
+      return total + textSlides + (section.table ? 1 : 0);
+    }, 2);
+  }
 
+  async function applyEdits() {
+    const current = active;
+    if (!current || editorBusy || busy) return;
+
+    const targetFormat = current.format;
     const title = editTitle.value.trim();
     if (!title) {
       setEditorMessage("Укажите заголовок документа.", true);
@@ -1288,46 +1368,58 @@
         title: title,
         subtitle: editSubtitle.value.trim(),
         sections: sections,
-        theme: active.doc.theme,
+        theme: current.doc.theme,
       },
-      active.format,
+      targetFormat,
       {
-        slides: active.format === "pptx" ? sections.length + 2 : null,
-        theme: active.doc.theme,
+        slides: targetFormat === "pptx" ? pptxSlideCount(sections) : null,
+        theme: current.doc.theme,
       }
     );
 
-    let photo = null;
-    if (active.format === "pptx" && photoDraft) {
-      const data = cropPhoto(photoDraft, 1035, 1380);
-      if (data) {
-        photo = {
-          data: data,
-          name: photoDraft.name,
-          width: photoDraft.width,
-          height: photoDraft.height,
-        };
+    let photo = targetFormat === "pptx" ? current.photo || null : null;
+    if (targetFormat === "pptx" && photoDirty) {
+      photo = null;
+      if (photoDraft) {
+        const data = cropPhoto(photoDraft, 1035, 1380);
+        if (data) {
+          photo = {
+            data: data,
+            name: photoDraft.name,
+            width: photoDraft.width,
+            height: photoDraft.height,
+          };
+        }
       }
     }
     if (photo) nextDoc.photo = photo;
+    if (current.doc.templateBytes) nextDoc.templateBytes = current.doc.templateBytes;
 
     setEditorBusy(true, "Собираю обновлённый файл…");
     try {
-      await Forma.deps.ensure(active.format);
-      const blob = await Forma.renderers[active.format](nextDoc);
-      const url = URL.createObjectURL(new Blob([blob], { type: MIME[active.format] }));
+      const useExactTemplate = targetFormat === "pptx" && Boolean(nextDoc.templateBytes);
+      if (!useExactTemplate) await Forma.deps.ensure(targetFormat);
+      if (active !== current || busy) return;
+      const blob = await Forma.renderers[targetFormat](nextDoc);
+      if (active !== current || busy) return;
+      const url = URL.createObjectURL(new Blob([blob], { type: MIME[targetFormat] }));
+      if (active !== current || busy) {
+        URL.revokeObjectURL(url);
+        return;
+      }
       if (lastUrl) URL.revokeObjectURL(lastUrl);
       lastUrl = url;
 
-      active.doc = nextDoc;
-      active.url = url;
-      active.filename = "tezis-" + Forma.slugify(nextDoc.title) + "." + active.format;
-      active.edited = true;
-      active.photo = photo;
+      current.doc = nextDoc;
+      current.url = url;
+      current.filename = "tezis-" + Forma.slugify(nextDoc.title) + "." + targetFormat;
+      current.edited = true;
+      current.photo = photo;
 
       closeEditor();
       paintResult(false);
       setStatus("Файл обновлён — можно скачать.");
+      editOpen.focus();
     } catch (error) {
       setEditorMessage(
         "Не удалось обновить файл: " +

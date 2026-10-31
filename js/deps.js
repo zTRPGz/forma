@@ -4,13 +4,21 @@
   const Forma = (global.Forma = global.Forma || {});
   const doc = global.document;
 
-  let fontsLoaded = false;
+  function fontsReady() {
+    return Boolean(
+      global.vfs &&
+        typeof global.vfs === "object" &&
+        Object.keys(global.vfs).some(function (name) {
+          return /\.ttf$/i.test(name) && typeof global.vfs[name] === "string" && global.vfs[name].length > 100;
+        })
+    );
+  }
 
   const LIBS = {
     docx: { src: "./vendor/docx.umd.js", ready: function () { return !!global.docx; } },
     pptx: { src: "./vendor/pptxgen.bundle.js", ready: function () { return !!global.PptxGenJS; } },
     pdfmake: { src: "./vendor/pdfmake.min.js", ready: function () { return !!global.pdfMake; } },
-    fonts: { src: "./vendor/vfs_fonts.js", ready: function () { return fontsLoaded; } },
+    fonts: { src: "./vendor/vfs_fonts.js", ready: fontsReady },
   };
 
   const ORDER = {
@@ -47,7 +55,6 @@
     if (!pending[key]) {
       pending[key] = loadScript(lib.src)
         .then(function () {
-          if (key === "fonts") fontsLoaded = true;
           if (!lib.ready()) throw new Error("Модуль " + key + " не инициализировался.");
         })
         .catch(function (error) {

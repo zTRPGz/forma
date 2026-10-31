@@ -3,6 +3,7 @@
 
   const Forma = (global.Forma = global.Forma || {});
   const MAX_TEMPLATE_BYTES = 20 * 1024 * 1024;
+  const MAX_THEME_BYTES = 2 * 1024 * 1024;
   const WHITE = "FFFFFF";
 
   const PRESETS = [
@@ -73,7 +74,7 @@
     {
       id: "mfua",
       name: "МФЮА",
-      note: "Фирменный синий, Franklin Gothic",
+      note: "Исходный шаблон: фон и макеты без изменений",
       ink: "16232E",
       navy: "0B2F52",
       accent: "0965AF",
@@ -287,6 +288,7 @@
       if (readU32(bytes, offset) !== 0x02014b50) break;
       const method = readU16(bytes, offset + 10);
       const compressed = readU32(bytes, offset + 20);
+      const uncompressed = readU32(bytes, offset + 24);
       const nameLength = readU16(bytes, offset + 28);
       const extraLength = readU16(bytes, offset + 30);
       const commentLength = readU16(bytes, offset + 32);
@@ -294,6 +296,7 @@
       const name = decoder.decode(bytes.subarray(offset + 46, offset + 46 + nameLength));
 
       if (pattern.test(name)) {
+        if (uncompressed > MAX_THEME_BYTES) throw new Error("тема в файле слишком большая");
         if (readU32(bytes, localOffset) !== 0x04034b50) throw new Error("повреждённый архив");
         const localName = readU16(bytes, localOffset + 26);
         const localExtra = readU16(bytes, localOffset + 28);
@@ -308,7 +311,10 @@
   }
 
   async function inflate(entry) {
-    if (entry.method === 0) return entry.bytes;
+    if (entry.method === 0) {
+      if (entry.bytes.length > MAX_THEME_BYTES) throw new Error("тема в файле слишком большая");
+      return entry.bytes;
+    }
     if (entry.method !== 8) throw new Error("неизвестный способ сжатия темы");
     if (typeof global.DecompressionStream !== "function") {
       throw new Error("браузер не умеет распаковывать шаблоны — обновите его");
@@ -316,7 +322,26 @@
     const stream = new Blob([entry.bytes])
       .stream()
       .pipeThrough(new global.DecompressionStream("deflate-raw"));
-    return new Uint8Array(await new Response(stream).arrayBuffer());
+    const reader = stream.getReader();
+    const chunks = [];
+    let total = 0;
+    while (true) {
+      const part = await reader.read();
+      if (part.done) break;
+      total += part.value.byteLength;
+      if (total > MAX_THEME_BYTES) {
+        await reader.cancel();
+        throw new Error("тема в файле слишком большая");
+      }
+      chunks.push(part.value);
+    }
+    const result = new Uint8Array(total);
+    let offset = 0;
+    chunks.forEach(function (chunk) {
+      result.set(chunk, offset);
+      offset += chunk.byteLength;
+    });
+    return result;
   }
 
   function themeXml(bytes) {
@@ -384,7 +409,8 @@
   async function fromTemplate(file) {
     if (!file) throw new Error("файл не выбран");
     if (file.size > MAX_TEMPLATE_BYTES) throw new Error("файл больше 20 МБ");
-    const bytes = new Uint8Array(await file.arrayBuffer());
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
     const entry = findEntry(bytes, /^(?:word|ppt)\/theme\/theme1\.xml$/i);
     if (!entry) throw new Error("в файле нет темы оформления — нужен DOCX или PPTX");
     const xml = await inflate(entry);
@@ -392,7 +418,10 @@
       .replace(/\.[^.]+$/, "")
       .trim()
       .slice(0, 60);
-    return fromThemeDocument(themeXml(xml), name);
+    return {
+      theme: fromThemeDocument(themeXml(xml), name),
+      bytes: /\.pptx$/i.test(file.name || "") ? buffer : null,
+    };
   }
 
   Object.assign(Forma, {

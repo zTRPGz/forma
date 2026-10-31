@@ -59,7 +59,7 @@
       guard += 1;
     }
     if (text.length > limit) {
-      let cut = text.slice(0, limit);
+      let cut = text.slice(0, Math.max(1, limit - 1));
       const space = cut.lastIndexOf(" ");
       if (space > 0) cut = cut.slice(0, space);
       text = cut.replace(/[ ,.;:\-—]+$/, "") + "…";
@@ -70,11 +70,11 @@
   function cleanList(values, limit, count) {
     if (!Array.isArray(values)) return [];
     return values
-      .slice(0, count)
       .map(function (value) {
         return clean(value, limit);
       })
-      .filter(Boolean);
+      .filter(Boolean)
+      .slice(0, count);
   }
 
   function todayRu() {
@@ -96,27 +96,29 @@
     const allowTable = !(fmt === "pptx" && slides);
     const sections = [];
     const maxSections = slides ? Math.max(1, slides - 2) : LIMITS.sections;
-    const rawSections = Array.isArray(source.sections) ? source.sections.slice(0, maxSections) : [];
+    const rawSections = Array.isArray(source.sections) ? source.sections : [];
 
-    rawSections.forEach(function (item) {
-      if (!item || typeof item !== "object") return;
+    for (const item of rawSections) {
+      if (sections.length >= maxSections) break;
+      if (!item || typeof item !== "object") continue;
       const heading = tidy(clean(item.heading, LIMITS.heading));
-      if (!heading) return;
+      if (!heading) continue;
 
       let table = null;
       if (allowTable && item.table && Array.isArray(item.table.headers)) {
         const headers = cleanList(item.table.headers, 40, LIMITS.cols);
         if (headers.length) {
           const rows = [];
-          const rawRows = Array.isArray(item.table.rows) ? item.table.rows.slice(0, LIMITS.rows) : [];
-          rawRows.forEach(function (row) {
-            if (!Array.isArray(row)) return;
+          const rawRows = Array.isArray(item.table.rows) ? item.table.rows : [];
+          for (const row of rawRows) {
+            if (rows.length >= LIMITS.rows) break;
+            if (!Array.isArray(row)) continue;
             const cells = row.slice(0, headers.length).map(function (cell) {
               return clean(cell, LIMITS.cell);
             });
             while (cells.length < headers.length) cells.push("");
             if (cells.some(Boolean)) rows.push(cells);
-          });
+          }
           if (rows.length) table = { headers: headers, rows: rows };
         }
       }
@@ -130,7 +132,7 @@
       if (section.paragraphs.length || section.bullets.length || section.table) {
         sections.push(section);
       }
-    });
+    }
 
     if (!sections.length) {
       sections.push({

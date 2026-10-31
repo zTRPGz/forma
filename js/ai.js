@@ -409,6 +409,27 @@
       .toLowerCase();
   }
 
+  function isTemporaryError(error) {
+    if (!error) return false;
+    if (error.name === "TypeError") return true;
+    return error.status === 408 || error.status === 429 || error.status >= 500;
+  }
+
+  function retryDelay(signal) {
+    return new Promise(function (resolve, reject) {
+      const timer = setTimeout(function () {
+        signal.removeEventListener("abort", aborted);
+        resolve();
+      }, 400);
+      function aborted() {
+        clearTimeout(timer);
+        signal.removeEventListener("abort", aborted);
+        reject(signal.reason || new Error("Запрос отменён."));
+      }
+      signal.addEventListener("abort", aborted, { once: true });
+    });
+  }
+
   async function askJson(messages, settings, signal) {
     let answer;
     try {
@@ -456,7 +477,15 @@
       signal
     );
 
-    const headings = headingList(outline).slice(0, target);
+    const headings = [];
+    const outlineSeen = new Set();
+    headingList(outline).forEach(function (heading) {
+      if (headings.length >= target) return;
+      const key = headingKey(heading);
+      if (!key || outlineSeen.has(key)) return;
+      outlineSeen.add(key);
+      headings.push(heading);
+    });
 
     if (headings.length < target) {
       const missing = target - headings.length;
@@ -535,14 +564,33 @@
         );
       });
 
-      const paired = Math.min(items.length, chunk.length);
-      for (let index = 0; index < paired; index += 1) {
-        storeItem(headingKey(chunk[index]), items[index]);
-      }
-
-      items.slice(paired).forEach(function (item) {
-        storeItem(headingKey(item.heading), item);
+      const expected = new Set(chunk.map(headingKey));
+      items.forEach(function (item) {
+        const key = headingKey(item.heading);
+        if (expected.has(key)) storeItem(key, item);
       });
+
+      const aligned =
+        items.length === chunk.length &&
+        items.every(function (item, index) {
+          const key = headingKey(item.heading);
+          return !key || key === headingKey(chunk[index]);
+        });
+      if (aligned) {
+        items.forEach(function (item, index) {
+          storeItem(headingKey(chunk[index]), item);
+        });
+      }
+    }
+
+    async function fillWithRetry(chunk) {
+      try {
+        await fillChunk(chunk);
+      } catch (error) {
+        if (!isTemporaryError(error)) throw error;
+        await retryDelay(signal);
+        await fillChunk(chunk);
+      }
     }
 
     const chunks = [];
@@ -551,22 +599,7 @@
     }
     for (let index = 0; index < chunks.length; index += 1) {
       if (filled.size >= headings.length) break;
-      await fillChunk(chunks[index]).catch(function () {
-        return null;
-      });
-    }
-
-    for (let round = 0; round < 2; round += 1) {
-      const missing = headings.filter(function (heading) {
-        return !filled.has(headingKey(heading));
-      });
-      if (!missing.length) break;
-      const step = round === 0 ? 2 : 1;
-      for (let start = 0; start < missing.length; start += step) {
-        await fillChunk(missing.slice(start, start + step)).catch(function () {
-          return null;
-        });
-      }
+      await fillWithRetry(chunks[index]);
     }
 
     const sections = headings
@@ -676,18 +709,12 @@
 
     try {
       if (format === "pptx" && options && options.slides && options.slides >= 12) {
-        const deck = await buildDeck(topic, options, controller.signal).catch(function () {
-          return null;
-        });
+        const deck = await buildDeck(topic, options, controller.signal);
         if (deck) {
           const target = options.slides - 2;
           cleanSections(deck);
           if (sectionCount(deck) >= target) return deck;
-          const topped = await topUpSections(deck, options, messages, true, controller.signal).catch(
-            function () {
-              return deck;
-            }
-          );
+          const topped = await topUpSections(deck, options, messages, true, controller.signal);
           if (sectionCount(topped) >= target) return topped;
         }
       }
@@ -745,6 +772,11 @@
       }
 
       cleanSections(parsed);
+      if (!sectionCount(parsed)) {
+        const error = new Error("ИИ вернул пустой документ. Показан демонстрационный вариант.");
+        error.code = "bad-schema";
+        throw error;
+      }
 
       if (isThin(parsed, format, options)) {
         const expanded = await complete(

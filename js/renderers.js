@@ -687,6 +687,9 @@
   }
 
   async function renderPptx(doc) {
+    if (doc && doc.templateBytes && Forma.pptTemplates) {
+      return Forma.pptTemplates.render(doc.templateBytes, doc);
+    }
     const Pptx = global.PptxGenJS;
     if (!Pptx) throw new Error("Библиотека PptxGenJS не загрузилась.");
     const T = themeOf(doc);

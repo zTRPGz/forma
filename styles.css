@@ -1115,10 +1115,24 @@ body::before {
   color: #9b2c1f;
 }
 
+.visually-hidden-focusable {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .format:focus-visible,
 .seg-btn:focus-visible,
 .template:focus-visible,
 .template-attach:focus-visible,
+.template-attach:focus-within,
 .idea:focus-visible,
 .cta:focus-visible,
 .download:focus-visible,
@@ -2789,7 +2803,7 @@ textarea:focus {
   height: 34.5cqw;
   background: var(--pv-alt, #f3ede4);
   border: 1px dashed var(--rule);
-  color: var(--muted);
+  color: var(--ink);
   text-align: center;
 }
 
@@ -2801,6 +2815,7 @@ textarea:focus {
 
 .slide-photo-hint {
   font-size: 0.885cqw;
+  font-weight: 500;
 }
 
 .slide-photo--filled {
@@ -3129,6 +3144,15 @@ textarea:focus {
   .preview--pdf,
   .preview--pptx {
     max-height: 620px;
+  }
+
+  .doc-page {
+    min-width: 480px;
+    max-width: none;
+  }
+
+  .slide {
+    min-width: 620px;
   }
 }
 
