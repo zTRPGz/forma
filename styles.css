@@ -2790,6 +2790,11 @@ textarea:focus {
   overflow: hidden;
 }
 
+/* Слайд без кадра: текст во всю ширину, как в файле. */
+.slide-body--full {
+  width: 86.5cqw;
+}
+
 .slide-photo {
   position: absolute;
   top: 14.85cqw;
@@ -2832,11 +2837,48 @@ textarea:focus {
 }
 
 .slide--tpl {
+  background-image: var(--tpl-bg, none);
   background-color: #fff;
   background-repeat: no-repeat;
   background-position: center;
   background-size: 100% 100%;
   border: 1px solid #c9d4e0;
+}
+
+.tpl-photo {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2em;
+  overflow: hidden;
+  border: 1px dashed #9aa9bb;
+  font-family: var(--sans);
+  text-align: center;
+  color: #5a6b7d;
+}
+
+.tpl-photo--filled {
+  border: 0;
+}
+
+.tpl-photo--filled img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tpl-photo-mark {
+  font-size: 1em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.tpl-photo-hint {
+  font-size: 0.6em;
+  font-weight: 500;
 }
 
 .tpl-title {

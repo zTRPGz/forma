@@ -86,6 +86,35 @@
     return String(value || "").replace(/\s*:$/, "").trim();
   }
 
+  // ИИ охотно повторяет одну мысль в абзаце и в пункте. Сравнение по «голым»
+  // буквам и цифрам не зависит от падежных знаков и регистра.
+  function textKey(value) {
+    return String(value).toLowerCase().replace(/[^a-zа-яё0-9]+/gi, "");
+  }
+
+  function dropRepeats(values, seen) {
+    const kept = [];
+    values.forEach(function (value) {
+      const key = textKey(value);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      kept.push(value);
+    });
+    return kept;
+  }
+
+  function dropCovered(values, blocks) {
+    if (!blocks.length) return values;
+    return values.filter(function (value) {
+      const key = textKey(value);
+      // Короткие пункты («Да», «Риски») совпадают с любым текстом — не считаем.
+      if (key.length < 14) return true;
+      return !blocks.some(function (block) {
+        return block.indexOf(key) >= 0;
+      });
+    });
+  }
+
   function titleFromTopic(topic) {
     const base = tidy(clean(topic, LIMITS.title)).replace(/[.!?]+$/, "");
     return base ? base.charAt(0).toUpperCase() + base.slice(1) : "";
@@ -100,6 +129,8 @@
         : 0;
     const allowTable = !(fmt === "pptx" && slides);
     const sections = [];
+    const seenParagraphs = new Set();
+    const seenBullets = new Set();
     const maxSections = slides ? Math.max(1, slides - 2) : LIMITS.sections;
     const rawSections = Array.isArray(source.sections) ? source.sections : [];
 
@@ -128,10 +159,21 @@
         }
       }
 
+      const rawParagraphs = cleanList(item.paragraphs, LIMITS.text, LIMITS.paragraphs + 1);
+      const rawBullets = cleanList(item.bullets, LIMITS.bullet, LIMITS.bullets + 2);
+      let paragraphs = dropRepeats(rawParagraphs, seenParagraphs).slice(0, LIMITS.paragraphs);
+      const blocks = paragraphs.map(textKey);
+      let bullets = dropRepeats(dropCovered(rawBullets, blocks), seenBullets).slice(0, LIMITS.bullets);
+      if (!paragraphs.length && !bullets.length && !table) {
+        // Раздел опустёл целиком из-за дублей: лучше повтор, чем пустой слайд.
+        paragraphs = rawParagraphs.slice(0, LIMITS.paragraphs);
+        bullets = rawBullets.slice(0, LIMITS.bullets);
+      }
+
       const section = {
         heading: heading,
-        paragraphs: cleanList(item.paragraphs, LIMITS.text, LIMITS.paragraphs),
-        bullets: cleanList(item.bullets, LIMITS.bullet, LIMITS.bullets),
+        paragraphs: paragraphs,
+        bullets: bullets,
         table: table,
       };
       if (section.paragraphs.length || section.bullets.length || section.table) {

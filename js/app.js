@@ -818,6 +818,14 @@
     const templatePromise = Forma.pptTemplates
       ? Forma.pptTemplates.selectedBytes(targetFormat, targetThemeId, targetCustomTemplate)
       : Promise.resolve(null);
+    // Части шаблона читаются независимо от текста, поэтому разбор идёт
+    // параллельно с запросом к ИИ, а не после него.
+    const previewPromise = templatePromise.then(function (bytes) {
+      if (!bytes || !Forma.pptTemplates || !Forma.pptTemplates.previewAssets) return null;
+      return Forma.pptTemplates.previewAssets(bytes).catch(function () {
+        return null;
+      });
+    });
     const depsReady = exactPptx
       ? Promise.resolve(null)
       : Forma.deps.ensure(targetFormat).then(
@@ -843,14 +851,7 @@
       const templateBytes = await templatePromise;
       if (templateBytes) {
         generated.doc.templateBytes = templateBytes;
-        if (Forma.pptTemplates && Forma.pptTemplates.previewAssets) {
-          try {
-            generated.doc.templatePreview =
-              await Forma.pptTemplates.previewAssets(templateBytes);
-          } catch (error) {
-            generated.doc.templatePreview = null;
-          }
-        }
+        generated.doc.templatePreview = await previewPromise;
       }
 
       if (exactPptx) {
@@ -1153,7 +1154,7 @@
     editSubtitle.value = active.doc.subtitle || "";
     renderEditSections();
     resetPhotoUI();
-    const usePhoto = active.format === "pptx" && !active.doc.templateBytes;
+    const usePhoto = active.format === "pptx";
     photoEditor.hidden = !usePhoto;
     setEditorMessage("");
     setEditorBusy(false);

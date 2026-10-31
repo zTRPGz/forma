@@ -519,7 +519,7 @@
     }, T);
   }
 
-  function pptxContentSlide(pptx, RECT, section, page, T, photo) {
+  function pptxContentSlide(pptx, RECT, section, page, T, photo, photoSlot) {
     const slide = pptx.addSlide();
     pptxHeading(slide, RECT, section.heading, T);
 
@@ -577,7 +577,8 @@
     slide.addText(runs, {
       x: PPT_M,
       y: 1.98,
-      w: PPT_CONTENT_W - 3.9,
+      // Кадр занимает правую колонну только на своём слайде, иначе текст идёт во всю ширину.
+      w: photoSlot ? PPT_CONTENT_W - 3.9 : PPT_CONTENT_W,
       h: 4.8,
       margin: 0,
       valign: "top",
@@ -586,7 +587,7 @@
       breakLine: false,
     });
 
-    pptxPhoto(slide, RECT, T, photo);
+    if (photoSlot) pptxPhoto(slide, RECT, T, photo);
     pptxFooter(slide, RECT, page, T);
   }
 
@@ -704,10 +705,15 @@
 
     pptxCover(pptx, RECT, doc, T);
 
+    // Одно место под кадр на весь файл: снимок стоит на последнем содержательном слайде.
+    const photoPage = doc.sections.reduce(function (last, section, index) {
+      return section.paragraphs.length || section.bullets.length ? index : last;
+    }, -1);
+
     let page = 2;
-    doc.sections.forEach(function (section) {
+    doc.sections.forEach(function (section, index) {
       if (section.paragraphs.length || section.bullets.length) {
-        pptxContentSlide(pptx, RECT, section, page, T, doc.photo);
+        pptxContentSlide(pptx, RECT, section, page, T, doc.photo, index === photoPage);
         page += 1;
       }
       if (section.table) {

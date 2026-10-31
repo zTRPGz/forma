@@ -58,6 +58,16 @@ function readZipEntries(buffer) {
   return result;
 }
 
+function normalizePart(path) {
+  const output = [];
+  for (const segment of path.split("/")) {
+    if (!segment || segment === ".") continue;
+    if (segment === "..") output.pop();
+    else output.push(segment);
+  }
+  return output.join("/");
+}
+
 async function main() {
   const source = fs.readFileSync(templatePath);
   const blob = await Forma.pptTemplates.render(new Uint8Array(source), doc);
@@ -67,6 +77,9 @@ async function main() {
   const original = readZipEntries(source);
   const output = readZipEntries(bytes);
   const problems = [];
+  // Пробный снимок — настоящий JPEG из самого шаблона: заведомо корректный.
+  const probe = original.get("ppt/media/image1.jpeg");
+  if (!probe) problems.push("в исходном шаблоне нет ppt/media/image1.jpeg");
 
   for (const name of ["ppt/slideMasters/slideMaster1.xml", "ppt/slideLayouts/slideLayout2.xml", "ppt/theme/theme1.xml", "ppt/media/image1.jpeg", "ppt/presProps.xml", "ppt/tableStyles.xml"]) {
     if (!output.has(name)) problems.push("потеряна часть " + name);
@@ -122,6 +135,50 @@ async function main() {
   if (!content.includes('lvl="1"')) problems.push("пункты списка потеряли уровень");
   const layout = output.get("ppt/slideLayouts/slideLayout2.xml").toString("utf8");
   if (!layout.includes('type="obj"')) problems.push("макет слайда изменился");
+
+  for (const [name, data] of output) {
+    if (!name.endsWith(".rels")) continue;
+    const base = name.replace(/_rels\/[^/]+$/, "");
+    for (const match of data.toString("utf8").matchAll(/<Relationship\b[^>]*Target="([^"]*)"/g)) {
+      const target = match[1];
+      if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(target)) continue;
+      const resolved = normalizePart(base + target);
+      if (!output.has(resolved)) {
+        problems.push(name + " ссылается на отсутствующую часть «" + target + "»");
+      }
+    }
+  }
+
+  const closing = output.get("ppt/slides/slide" + slides.length + ".xml").toString("utf8");
+  if (!closing.includes('prstDash val="dash"') || !closing.includes("место для изображения")) {
+    problems.push("на итоговом слайде нет места под фотографию");
+  }
+  if (output.has("ppt/media/forma-photo.jpeg")) problems.push("пустой слот не должен добавлять медиафайл");
+
+  const withPhoto = {
+    ...doc,
+    photo: { data: "data:image/jpeg;base64," + (probe ? probe.toString("base64") : "") },
+  };
+  const photoBytes = Buffer.from(
+    await (await Forma.pptTemplates.render(new Uint8Array(source), withPhoto)).arrayBuffer()
+  );
+  const photoOutput = readZipEntries(photoBytes);
+  const photoMedia = photoOutput.get("ppt/media/forma-photo.jpeg");
+  if (!photoMedia) problems.push("фотография не попала в ppt/media");
+  else if (probe && photoMedia.length !== probe.length) {
+    problems.push("размер фотографии в файле искажён");
+  }
+  const photoTypes = photoOutput.get("[Content_Types].xml").toString("utf8");
+  if (!/Extension="jpeg"/.test(photoTypes)) problems.push("для фотографии не описан тип содержимого");
+  const photoClosing = photoOutput
+    .get("ppt/slides/slide" + slides.length + ".xml")
+    .toString("utf8");
+  if (!/<p:pic>[\s\S]*?r:embed="rId2"/.test(photoClosing)) {
+    problems.push("фотография не вставлена на итоговый слайд");
+  }
+  if (photoClosing.includes("место для изображения")) {
+    problems.push("рамка «место для изображения» осталась под фотографией");
+  }
 
   console.log("файл: " + outPath + " (" + bytes.length + " байт, частей " + output.size + ")");
   if (problems.length) {

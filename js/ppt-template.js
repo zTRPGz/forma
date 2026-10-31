@@ -17,9 +17,15 @@
     notesSlide: OFFICE_REL_NS + "/notesSlide",
     notesMaster: OFFICE_REL_NS + "/notesMaster",
     handoutMaster: OFFICE_REL_NS + "/handoutMaster",
+    image: OFFICE_REL_NS + "/image",
   };
   const SLIDE_CONTENT_TYPE =
     "application/vnd.openxmlformats-officedocument.presentationml.slide+xml";
+  const IMAGE_CONTENT_TYPE = {
+    jpeg: "image/jpeg",
+    png: "image/png",
+  };
+  const MEDIA_PHOTO_NAME = "forma-photo";
   const SLIDE_REL_PATTERN = /^ppt\/slides\/[^/]+\.xml$/;
 
   let builtinPromise = null;
@@ -480,13 +486,48 @@
     body: { top: 0.31, height: 0.54, side: 0.05 },
   };
 
+  // Итоговая страница всегда хранит место под снимок: вертикальный кадр 3:4
+  // по центру. Без фотографии остаётся пунктирная рамка с подписью.
+  const PHOTO_BOX = { top: 0.30, height: 0.50, ratio: 0.75 };
+
+  function photoFrame(size) {
+    if (!size) return null;
+    const height = size.h * PHOTO_BOX.height;
+    const width = Math.min(height * PHOTO_BOX.ratio, size.w * 0.46);
+    return { x: (size.w - width) / 2, y: size.h * PHOTO_BOX.top, w: width, h: height };
+  }
+
   function contentFrames(presentationXml) {
     const size = slideSize(presentationXml);
     if (!size) return null;
     return {
       title: frameOf(CONTENT_BOXES.title, size),
       body: frameOf(CONTENT_BOXES.body, size),
+      photo: photoFrame(size),
     };
+  }
+
+  function dataUrlBytes(dataUrl) {
+    const value = String(dataUrl || "");
+    const comma = value.indexOf(",");
+    if (comma < 0 || !/;base64/i.test(value.slice(0, comma))) return null;
+    const header = value.slice(0, comma);
+    let extension = "jpeg";
+    if (/image\/png/i.test(header)) extension = "png";
+    else if (!/image\/j/i.test(header)) return null;
+    const body = value.slice(comma + 1).replace(/\s+/g, "");
+    let bytes = null;
+    if (typeof global.Buffer === "function") {
+      bytes = new Uint8Array(global.Buffer.from(body, "base64"));
+    } else if (typeof global.atob === "function") {
+      const binary = global.atob(body);
+      bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+      }
+    }
+    if (!bytes || !bytes.length || bytes.length > MAX_ENTRY_BYTES) return null;
+    return { extension: extension, bytes: bytes };
   }
 
   function frameOf(box, size) {
@@ -612,7 +653,51 @@
     );
   }
 
-  function slideXml(title, lines, position, slots, frames, fonts) {
+  function centeredRun(text, points, bold) {
+    return (
+      '<a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="ru-RU" sz="' +
+      Math.round(points * 100) +
+      '"' +
+      (bold ? ' b="1"' : "") +
+      ' dirty="0"><a:solidFill><a:srgbClr val="5A6B7D"/></a:solidFill></a:rPr><a:t>' +
+      escapeXml(text) +
+      "</a:t></a:r></a:p>"
+    );
+  }
+
+  // Слот под снимок на итоговой странице: настоящая картинка, если она
+  // приложена, иначе пунктирная рамка — место, куда пользователь вставит своё.
+  function photoShape(frame, imageExtension) {
+    if (!frame) return "";
+    const points = frame.h / 12700;
+    if (imageExtension) {
+      return (
+        "<p:pic>" +
+        '<p:nvPicPr><p:cNvPr id="5" name="Фотография"/><p:cNvPicPr>' +
+        '<a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>' +
+        '<p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>' +
+        "<p:spPr>" +
+        xfrm(frame) +
+        '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>'
+      );
+    }
+    return (
+      "<p:sp>" +
+      '<p:nvSpPr><p:cNvPr id="5" name="Место для фотографии"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>' +
+      "<p:spPr>" +
+      xfrm(frame) +
+      '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/>' +
+      '<a:ln w="12700" cap="flat"><a:solidFill><a:srgbClr val="9AA9BB"/></a:solidFill>' +
+      '<a:prstDash val="dash"/><a:round/></a:ln></p:spPr>' +
+      '<p:txBody><a:bodyPr anchor="ctr"/><a:lstStyle/>' +
+      centeredRun("ФОТО", points * 0.075, true) +
+      centeredRun("место для изображения", points * 0.045, false) +
+      "</p:txBody></p:sp>"
+    );
+  }
+
+  function slideXml(title, lines, position, slots, frames, fonts, options) {
+    const photo = options || {};
     return (
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
       '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' +
@@ -623,12 +708,13 @@
       '<a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>' +
       titlePlaceholder(title, slots, frames && frames.title, fonts) +
       bodyPlaceholder(lines, slots, frames && frames.body, fonts) +
+      (photo.slot ? photoShape(frames && frames.photo, photo.extension) : "") +
       numberPlaceholder(position, slots) +
       "</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>"
     );
   }
 
-  function slideRelsXml(layoutPart) {
+  function slideRelsXml(layoutPart, imageExtension) {
     const target =
       "../" +
       layoutPart
@@ -643,7 +729,17 @@
       REL_TYPES.slideLayout +
       '" Target="' +
       escapeXml(target) +
-      '"/></Relationships>'
+      '"/>' +
+      (imageExtension
+        ? '<Relationship Id="rId2" Type="' +
+          REL_TYPES.image +
+          '" Target="../media/' +
+          MEDIA_PHOTO_NAME +
+          '.' +
+          imageExtension +
+          '"/>'
+        : "") +
+      "</Relationships>"
     );
   }
 
@@ -683,7 +779,7 @@
         slides.push({ title: section.heading, lines: sectionLines(section) });
       }
     });
-    slides.push({ title: doc.title, lines: [] });
+    slides.push({ title: doc.title, lines: [], photo: true });
     return slides;
   }
 
@@ -735,11 +831,11 @@
     return relationshipsXml(kept);
   }
 
-  function ensureDefaultContentTypes(xml) {
+  function ensureDefaultContentTypes(xml, extraDefaults) {
     const defaults = [
       ["xml", "application/xml"],
       ["rels", "application/vnd.openxmlformats-package.relationships+xml"],
-    ];
+    ].concat(extraDefaults || []);
     const opening = /<Types\b[^>]*>/;
     defaults.forEach(function (item) {
       const pattern = new RegExp('<Default[^>]*Extension="' + item[0] + '"', "i");
@@ -754,7 +850,7 @@
     return xml;
   }
 
-  function buildContentTypesXml(original, packageMap, slideCount) {
+  function buildContentTypesXml(original, packageMap, slideCount, imageExtension) {
     let xml = original.replace(/<Override\b[\s\S]*?\/>/g, function (tag) {
       const name = attribute(tag, "PartName").replace(/^\//, "");
       if (SLIDE_REL_PATTERN.test(name)) return "";
@@ -770,7 +866,19 @@
       );
     }).join("");
     xml = xml.replace("</Types>", overrides + "</Types>");
-    return ensureDefaultContentTypes(xml);
+    const image = imageExtension && IMAGE_CONTENT_TYPE[imageExtension];
+    return ensureDefaultContentTypes(xml, image ? [[imageExtension, image]] : []);
+  }
+
+  // Разбор ZIP дорогой (распаковка всех частей + base64 фона), а шаблон один и
+  // тот же на все генерации, поэтому держим последний распактованный пакет.
+  let zipCache = null;
+
+  async function readTemplateZip(source) {
+    if (zipCache && zipCache.source === source) return zipCache.value;
+    const entries = await readZip(source);
+    zipCache = { source: source, value: entries };
+    return entries;
   }
 
   async function render(templateBytes, doc) {
@@ -779,7 +887,7 @@
       templateBytes instanceof Uint8Array
         ? templateBytes
         : new Uint8Array(templateBytes);
-    const entries = await readZip(source);
+    const entries = await readTemplateZip(source);
     const presentationXml = entries.map.get("ppt/presentation.xml");
     const contentTypesXml = entries.map.get("[Content_Types].xml");
     const presentationRelsXml = entries.map.get("ppt/_rels/presentation.xml.rels");
@@ -807,11 +915,24 @@
 
     const firstRelId = nextRelationshipId(carriedRels);
     const slides = documentSlides(doc);
+    const photo = frames && frames.photo ? dataUrlBytes(doc.photo && doc.photo.data) : null;
+    if (photo) {
+      packageMap.set("ppt/media/" + MEDIA_PHOTO_NAME + "." + photo.extension, photo.bytes);
+    }
     const slideIds = slides.map(function (slide, index) {
       const name = "ppt/slides/slide" + (index + 1) + ".xml";
       const relId = "rId" + (firstRelId + index);
-      packageMap.set(name, encodeText(slideXml(slide.title, slide.lines, index + 1, slots, frames, fonts)));
-      packageMap.set(relationshipPath(name), encodeText(slideRelsXml(layoutPart)));
+      const extension = slide.photo && photo ? photo.extension : "";
+      packageMap.set(
+        name,
+        encodeText(
+          slideXml(slide.title, slide.lines, index + 1, slots, frames, fonts, {
+            slot: Boolean(slide.photo),
+            extension: extension,
+          })
+        )
+      );
+      packageMap.set(relationshipPath(name), encodeText(slideRelsXml(layoutPart, extension)));
       return { id: 256 + index, relId: relId };
     });
 
@@ -843,7 +964,14 @@
     const partsBeforeSlides = new Map(packageMap);
     packageMap.set(
       "[Content_Types].xml",
-      encodeText(buildContentTypesXml(decodeText(contentTypesXml), partsBeforeSlides, slides.length))
+      encodeText(
+        buildContentTypesXml(
+          decodeText(contentTypesXml),
+          partsBeforeSlides,
+          slides.length,
+          photo ? photo.extension : ""
+        )
+      )
     );
 
     const ordered = [];
@@ -914,7 +1042,7 @@
         : new Uint8Array(templateBytes);
     let entries;
     try {
-      entries = await readZip(source);
+      entries = await readTemplateZip(source);
     } catch (error) {
       return null;
     }
@@ -926,6 +1054,7 @@
       widthPt: size ? size.w / 12700 : 960,
       backgroundImage: null,
       boxes: CONTENT_BOXES,
+      photoBox: PHOTO_BOX,
       fonts: masterFontSizes(""),
     };
     const masterRel = presentationRels(entries).filter(function (relationship) {

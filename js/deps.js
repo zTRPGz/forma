@@ -34,7 +34,9 @@
     return new Promise(function (resolve, reject) {
       const script = doc.createElement("script");
       script.src = src;
-      script.async = true;
+      // async=false сохраняет порядок исполнения для динамических скриптов:
+      // шрифты должны подключиться к уже существующему pdfMake.
+      script.async = false;
       script.dataset.formaLib = src;
       script.onload = function () {
         resolve();
@@ -68,11 +70,12 @@
   function ensure(format) {
     const keys = ORDER[format];
     if (!keys) return Promise.reject(new Error("Неизвестный формат: " + format));
-    return keys.reduce(function (chain, key) {
-      return chain.then(function () {
+    // Скачивание идёт параллельно, исполнение — в порядке списка ORDER.
+    return Promise.all(
+      keys.map(function (key) {
         return ensureLib(key);
-      });
-    }, Promise.resolve());
+      })
+    ).then(function () {});
   }
 
   function ready(format) {

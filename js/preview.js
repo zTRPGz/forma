@@ -374,11 +374,12 @@
     return frame;
   }
 
-  function pptxContentSlide(section, page, photo) {
+  function pptxContentSlide(section, page, photo, photoSlot) {
     const slide = node("div", "slide slide--content");
     pptxHeading(slide, section.heading);
 
     const body = node("div", "slide-body");
+    if (!photoSlot) body.classList.add("slide-body--full");
     let total = 0;
     section.paragraphs.forEach(function (text) {
       total += text.length;
@@ -401,7 +402,7 @@
     }
 
     slide.append(body);
-    slide.append(pptxPhoto(photo));
+    if (photoSlot) slide.append(pptxPhoto(photo));
     slideFooter(page).forEach(function (element) {
       slide.append(element);
     });
@@ -481,9 +482,12 @@
     root.append(pptxCover(doc));
 
     let page = 2;
-    doc.sections.forEach(function (section) {
+    const photoPage = doc.sections.reduce(function (last, section, index) {
+      return section.paragraphs.length || section.bullets.length ? index : last;
+    }, -1);
+    doc.sections.forEach(function (section, index) {
       if (section.paragraphs.length || section.bullets.length) {
-        root.append(pptxContentSlide(section, page, doc.photo));
+        root.append(pptxContentSlide(section, page, doc.photo, index === photoPage));
         page += 1;
       }
       if (section.table) {
@@ -530,6 +534,10 @@
 
     const TITLE_BOX = boxOf(assets.boxes.title);
     const BODY_BOX = boxOf(assets.boxes.body);
+    const PHOTO = assets.photoBox;
+    // Ширина считается от высоты кадра, как в файле шаблона, и ограничена
+    // той же долей слайда.
+    const PHOTO_WIDTH = Math.min((PHOTO.height * PHOTO.ratio) / aspect, 0.46);
 
     function toCqw(points) {
       return ((points * 100) / widthPt).toFixed(3) + "cqw";
@@ -537,11 +545,35 @@
 
     const root = node("div", "slides-preview slides-preview--tpl");
     applyTheme(root, doc);
+    // Фон шаблона — одна data-URL примерно на 190 КБ: задаём её один раз для
+    // контейнера, иначе строка копируется в style каждого слайда.
+    if (assets.backgroundImage) {
+      root.style.setProperty("--tpl-bg", 'url("' + assets.backgroundImage + '")');
+    }
 
-    function slide(title, lines, page) {
+    function photoSlot() {
+      const frame = node("div", "tpl-photo");
+      frame.style.top = PHOTO.top * 100 + "%";
+      frame.style.left = ((1 - PHOTO_WIDTH) / 2) * 100 + "%";
+      frame.style.width = PHOTO_WIDTH * 100 + "%";
+      frame.style.height = PHOTO.height * 100 + "%";
+      frame.style.fontSize = toCqw(PHOTO.height * heightPt * 0.075);
+      if (doc.photo && doc.photo.data) {
+        frame.classList.add("tpl-photo--filled");
+        const image = document.createElement("img");
+        image.src = doc.photo.data;
+        image.alt = doc.photo.name ? "Фотография: " + doc.photo.name : "Фотография на слайде";
+        frame.append(image);
+      } else {
+        frame.append(node("span", "tpl-photo-mark", "ФОТО"));
+        frame.append(node("span", "tpl-photo-hint", "место для изображения"));
+      }
+      return frame;
+    }
+
+    function slide(title, lines, page, options) {
       const el = node("div", "slide slide--tpl");
       el.style.aspectRatio = String(aspect);
-      el.style.backgroundImage = 'url("' + assets.backgroundImage + '")';
 
       const heading = node("p", "tpl-title", title);
       const titleScale = fit([{ level: 0, text: title }], TITLE_BOX, function () {
@@ -566,6 +598,7 @@
         });
         el.append(body);
       }
+      if (options && options.photo) el.append(photoSlot());
       el.append(node("span", "tpl-page", String(page).padStart(2, "0")));
       return el;
     }
@@ -581,7 +614,7 @@
       const lines = tplLines(section);
       root.append(slide(section.heading, lines, page++));
     });
-    root.append(slide(doc.title, [], page++));
+    root.append(slide(doc.title, [], page++, { photo: true }));
     return root;
   }
 
