@@ -31,7 +31,7 @@
   function fontStack(name, fallback) {
     const value = String(name || "").trim().replace(/["\\]/g, "");
     if (!value) return fallback;
-    const serif = /(georgia|cambria|palatino|times|garamond|book|constantia|baskerville|didot)/i.test(value);
+    const serif = /(georgia|cambria|palatino|times|garamond|book antiqua|constantia|baskerville|didot)/i.test(value);
     return '"' + value + '", ' + (serif ? "Georgia, serif" : '"Segoe UI", Arial, sans-serif');
   }
 

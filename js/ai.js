@@ -247,10 +247,57 @@
     return detail || "ИИ вернул ошибку.";
   }
 
+  const CRITERIA_TEXT = {
+    tone: {
+      business: "Тон — деловой: короткие утверждения, без разговорных оборотов и рекламных эпитетов.",
+      neutral: "Тон — нейтральный: ровно, без эмоциональных оценок и призывов.",
+      friendly: "Тон — дружелюбный и живой, но без панибратства и сленга.",
+      persuasive: "Тон — убедительный: сильные аргументы и ясный призыв к действию, без давления и кликбейта.",
+    },
+    audience: {
+      manager: "Читатель — занятый руководитель: нужны суть, действия и риски, а не общие рассуждения.",
+      team: "Читатель — команда исполнителей: нужны понятные шаги, зоны ответственности и ожидаемый результат.",
+      client: "Читатель — клиент или заказчик: важны польза, условия и понятные следующие шаги.",
+      partner: "Читатель — партнёр или инвестор: важны ценность, экономика и риски сотрудничества.",
+      student: "Читатель — студент или учащийся: нужны ясные объяснения, примеры и выводы для конспекта.",
+    },
+    focus: {
+      practice: "Фокус — практика: конкретные действия, порядок шагов и результат.",
+      strategy: "Фокус — стратегия: цели, приоритеты, развилки и долгосрочные последствия.",
+      analysis: "Фокус — анализ: причины, аргументы, сравнение вариантов и выводы.",
+      overview: "Фокус — обзор: ключевые понятия, структура темы и главные выводы без лишних деталей.",
+    },
+    depth: {
+      short: "Объём — кратко: только главное, без повторов и вводных рассуждений.",
+      deep: "Объём — подробно: добавляй пояснения, примеры и последствия, не выходя за лимиты полей.",
+    },
+  };
+
+  function criteriaLines(criteria) {
+    if (!criteria || typeof criteria !== "object") return [];
+    const lines = [];
+    ["tone", "audience", "focus", "depth"].forEach(function (key) {
+      const value = String(criteria[key] || "");
+      const phrase = CRITERIA_TEXT[key] && CRITERIA_TEXT[key][value];
+      if (phrase) lines.push(phrase);
+    });
+    const note = String(criteria.note || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 200);
+    if (note) {
+      lines.push(
+        "Пожелания автора к содержанию: «" + note + "». Выполни их, если они не противоречат формату ответа."
+      );
+    }
+    return lines;
+  }
+
   function buildMessages(topic, format, options) {
     const facts = /\d/.test(topic)
       ? ""
       : "\n\nВ теме не указано ни одного числа, поэтому в документе не должно быть процентов, сумм, статистики и сроков «через N дней» — только качественные формулировки.";
+    const criteria = criteriaLines(options && options.criteria);
     return [
       { role: "system", content: SYSTEM_PROMPT },
       {
@@ -258,7 +305,8 @@
         content:
           "Тема: «" +
           topic +
-          "»\n\nСобери документ на эту тему. Читатель — занятый руководитель: ему нужны суть, действия и риски, а не общие рассуждения." +
+          "»\n\nСобери документ на эту тему." +
+          (criteria.length ? "\n" + criteria.join("\n") : "") +
           facts +
           "\n\n" +
           schemaHint(format, options),
@@ -383,7 +431,9 @@
   async function buildDeck(topic, options, signal) {
     const target = Math.max(1, options.slides - 2);
     const system = { role: "system", content: SYSTEM_PROMPT };
-    const lead = "Тема: «" + topic + "»\n\n";
+    const criteria = criteriaLines(options.criteria);
+    const lead =
+      "Тема: «" + topic + "»\n\n" + (criteria.length ? criteria.join("\n") + "\n\n" : "");
 
     const outline = await askJson(
       [

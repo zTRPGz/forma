@@ -11,6 +11,14 @@
   const FORMAT_KEY = "forma.format.v1";
   const SLIDES_KEY = "forma.slides.v1";
   const THEME_KEY = "forma.theme.v1";
+  const CRITERIA_KEY = "forma.criteria.v1";
+  const CRITERIA_DEFAULTS = {
+    tone: "business",
+    audience: "manager",
+    focus: "practice",
+    depth: "standard",
+    note: "",
+  };
   const SLIDE_COUNTS = [4, 6, 8, 10, 12, 16, 20];
   const FALLBACK_IDEAS = [
     "онбординг новых сотрудников за первые две недели",
@@ -24,6 +32,13 @@
   const topic = document.getElementById("topic");
   const count = document.getElementById("count");
   const counter = count.parentElement;
+  const criteriaTone = document.getElementById("criteria-tone");
+  const criteriaAudience = document.getElementById("criteria-audience");
+  const criteriaFocus = document.getElementById("criteria-focus");
+  const criteriaDepth = document.getElementById("criteria-depth");
+  const criteriaNote = document.getElementById("criteria-note");
+  const criteriaReset = document.getElementById("criteria-reset");
+  const criteriaSummary = document.getElementById("criteria-summary");
   const generateButton = document.getElementById("generate");
   const ctaText = document.getElementById("ctaText");
   const ctaFormat = document.getElementById("ctaFormat");
@@ -90,6 +105,7 @@
   let themeId = "paper";
   let customTheme = null;
   let templateMessage = null;
+  let criteria = Object.assign({}, CRITERIA_DEFAULTS);
   let lastIdea = -1;
   let badgeLocked = false;
   let active = null;
@@ -213,6 +229,96 @@
     } catch (error) {
       /* не критично */
     }
+  }
+
+  function criteriaPairs() {
+    return [
+      [criteriaTone, "tone"],
+      [criteriaAudience, "audience"],
+      [criteriaFocus, "focus"],
+      [criteriaDepth, "depth"],
+    ];
+  }
+
+  function readStoredCriteria() {
+    const next = Object.assign({}, CRITERIA_DEFAULTS);
+    try {
+      const stored = JSON.parse(localStorage.getItem(CRITERIA_KEY) || "null");
+      if (!stored || typeof stored !== "object") return next;
+      criteriaPairs().forEach(function (pair) {
+        const value = String(stored[pair[1]] || "");
+        const allowed = Array.prototype.some.call(pair[0].options, function (option) {
+          return option.value === value;
+        });
+        if (allowed) next[pair[1]] = value;
+      });
+      next.note = String(stored.note || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 200);
+    } catch (error) {
+      return next;
+    }
+    return next;
+  }
+
+  function storeCriteria() {
+    try {
+      localStorage.setItem(CRITERIA_KEY, JSON.stringify(criteria));
+    } catch (error) {
+      /* не критично */
+    }
+  }
+
+  function criteriaLabel(select) {
+    const option = select && select.options[select.selectedIndex];
+    return option ? option.textContent.trim() : "";
+  }
+
+  function updateCriteriaSummary() {
+    if (!criteriaSummary) return;
+    const parts = criteriaPairs().map(function (pair) {
+      return criteriaLabel(pair[0]);
+    });
+    if (criteriaNote.value.trim()) parts.push("своё пожелание");
+    criteriaSummary.textContent = parts.filter(Boolean).join(" · ");
+  }
+
+  function applyCriteriaUI() {
+    criteriaPairs().forEach(function (pair) {
+      const select = pair[0];
+      const value = criteria[pair[1]];
+      const allowed = Array.prototype.some.call(select.options, function (option) {
+        return option.value === value;
+      });
+      select.value = allowed ? value : CRITERIA_DEFAULTS[pair[1]];
+    });
+    criteriaNote.value = criteria.note || "";
+    updateCriteriaSummary();
+  }
+
+  function syncCriteria() {
+    criteriaPairs().forEach(function (pair) {
+      criteria[pair[1]] = pair[0].value;
+    });
+    criteria.note = criteriaNote.value.replace(/\s+/g, " ").trim().slice(0, 200);
+    updateCriteriaSummary();
+    storeCriteria();
+  }
+
+  function collectCriteria() {
+    const next = {};
+    criteriaPairs().forEach(function (pair) {
+      next[pair[1]] = pair[0].value;
+    });
+    next.note = criteriaNote.value.trim().slice(0, 200);
+    return next;
+  }
+
+  function resetCriteria() {
+    criteria = Object.assign({}, CRITERIA_DEFAULTS);
+    applyCriteriaUI();
+    storeCriteria();
   }
 
   function slidesWord(value) {
@@ -536,6 +642,12 @@
     }
   });
 
+  criteriaPairs().forEach(function (pair) {
+    pair[0].addEventListener("change", syncCriteria);
+  });
+  criteriaNote.addEventListener("input", syncCriteria);
+  criteriaReset.addEventListener("click", resetCriteria);
+
   generateButton.addEventListener("click", generate);
   retryButton.addEventListener("click", generate);
 
@@ -638,6 +750,7 @@
     const targetFormat = format;
     const targetSlides = slides;
     const targetTheme = currentTheme();
+    const targetCriteria = collectCriteria();
 
     setBusy(true);
     hideResult();
@@ -666,6 +779,7 @@
       const options = {
         slides: targetFormat === "pptx" ? targetSlides : null,
         theme: targetTheme,
+        criteria: targetCriteria,
       };
       const generated = await Forma.ai.generateContent(value, targetFormat, options);
 
@@ -1234,6 +1348,8 @@
   format = readStoredFormat();
   slides = readStoredSlides();
   themeId = readStoredTheme();
+  criteria = readStoredCriteria();
+  applyCriteriaUI();
   setBadge("checking");
   renderTemplates();
   updateTemplateNote();

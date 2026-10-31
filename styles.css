@@ -1200,6 +1200,176 @@ textarea:focus {
   box-shadow: 0 0 0 4px rgba(16, 29, 47, 0.07);
 }
 
+/* ---------- критерии генерации ---------- */
+
+.criteria {
+  margin-top: 12px;
+  background: var(--surface-soft);
+  border: 1px solid var(--rule-soft);
+  border-radius: 12px;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.criteria[open] {
+  background: #fff;
+  border-color: var(--rule);
+}
+
+.criteria-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 11px 14px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.criteria-head::-webkit-details-marker {
+  display: none;
+}
+
+.criteria-head::after {
+  content: "+";
+  margin-left: auto;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.criteria[open] .criteria-head::after {
+  content: "−";
+}
+
+.criteria-title {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.criteria-summary {
+  font-size: 12.5px;
+  line-height: 1.3;
+  color: var(--ink);
+  opacity: 0.72;
+}
+
+.criteria-body {
+  padding: 0 14px 12px;
+  border-top: 1px solid var(--rule-soft);
+}
+
+.criteria-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 12px;
+}
+
+.criteria-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.criteria-field > span {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.criteria-field em {
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-style: normal;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  opacity: 0.7;
+}
+
+.criteria-field select,
+.criteria-field input {
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--ink);
+  background: #fcf9f3;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.criteria-field select {
+  padding-right: 4px;
+  cursor: pointer;
+}
+
+.criteria-field select:hover,
+.criteria-field input:hover {
+  border-color: var(--rule-strong);
+}
+
+.criteria-field select:focus-visible,
+.criteria-field input:focus-visible {
+  background: #fff;
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(16, 29, 47, 0.08);
+  outline: none;
+}
+
+.criteria-note-field {
+  margin-top: 10px;
+}
+
+.criteria-note-field input {
+  height: 40px;
+}
+
+.criteria-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.criteria-reset {
+  padding: 2px 0;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: color 0.18s ease;
+}
+
+.criteria-reset:hover {
+  color: var(--accent);
+}
+
+.criteria-reset:focus-visible,
+.criteria-head:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.criteria-hint {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
 /* ---------- запуск ---------- */
 
 .cta {
@@ -3030,6 +3200,22 @@ textarea:focus {
   .format-meta,
   .format-sub {
     display: none;
+  }
+
+  .criteria-head {
+    padding: 10px 12px;
+  }
+
+  .criteria-body {
+    padding: 0 12px 12px;
+  }
+
+  .criteria-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .criteria-summary {
+    font-size: 12px;
   }
 
   .format-title {

@@ -16,7 +16,7 @@
   <title>Тезис — документы и презентации из одной фразы</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23101d2f'/%3E%3Cpath d='M18 19h28v7H36v20h-8V26H18z' fill='%23f3ede4'/%3E%3Ccircle cx='47' cy='47' r='4' fill='%23c2410c'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://forma-docs.duckdns.org" crossorigin>
-  <link rel="stylesheet" href="./styles.css?v=20261031n">
+  <link rel="stylesheet" href="./styles.css?v=20261031o">
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -202,6 +202,61 @@
           <textarea id="topic" maxlength="300" rows="4" placeholder="Можно оставить пустым — подберём тему сами. Например: как выстроить онбординг новых сотрудников за первые две недели"></textarea>
         </div>
 
+        <details class="criteria" id="criteria">
+          <summary class="criteria-head">
+            <span class="criteria-title">Критерии генерации</span>
+            <span class="criteria-summary" id="criteria-summary">Деловой · Руководитель · Практика · Стандарт</span>
+          </summary>
+          <div class="criteria-body">
+            <div class="criteria-grid">
+              <label class="criteria-field">
+                <span>Тон</span>
+                <select id="criteria-tone">
+                  <option value="business">Деловой</option>
+                  <option value="neutral">Нейтральный</option>
+                  <option value="friendly">Дружелюбный</option>
+                  <option value="persuasive">Убедительный</option>
+                </select>
+              </label>
+              <label class="criteria-field">
+                <span>Читатель</span>
+                <select id="criteria-audience">
+                  <option value="manager">Руководитель</option>
+                  <option value="team">Команда</option>
+                  <option value="client">Клиент</option>
+                  <option value="partner">Партнёр</option>
+                  <option value="student">Студент</option>
+                </select>
+              </label>
+              <label class="criteria-field">
+                <span>Фокус</span>
+                <select id="criteria-focus">
+                  <option value="practice">Практика</option>
+                  <option value="strategy">Стратегия</option>
+                  <option value="analysis">Анализ</option>
+                  <option value="overview">Обзор</option>
+                </select>
+              </label>
+              <label class="criteria-field">
+                <span>Детализация</span>
+                <select id="criteria-depth">
+                  <option value="short">Кратко</option>
+                  <option value="standard">Стандарт</option>
+                  <option value="deep">Подробно</option>
+                </select>
+              </label>
+            </div>
+            <label class="criteria-field criteria-note-field">
+              <span>Пожелание к содержанию <em>необязательно</em></span>
+              <input id="criteria-note" type="text" maxlength="200" autocomplete="off" placeholder="Например: без англицизмов, добавить примеры из практики">
+            </label>
+            <div class="criteria-foot">
+              <button type="button" id="criteria-reset" class="criteria-reset">Сбросить</button>
+              <span class="criteria-hint">Меняют текст, не оформление.</span>
+            </div>
+          </div>
+        </details>
+
         <button type="button" id="generate" class="cta">
           <span id="ctaText">Сгенерировать</span>
           <span class="cta-format" id="ctaFormat">Word</span>
@@ -361,12 +416,12 @@
     </footer>
   </div>
 
-  <script src="./js/deps.js?v=20261031n"></script>
-  <script src="./js/model.js?v=20261031n"></script>
-  <script src="./js/themes.js?v=20261031n"></script>
-  <script src="./js/ai.js?v=20261031n"></script>
-  <script src="./js/renderers.js?v=20261031n"></script>
-  <script src="./js/preview.js?v=20261031n"></script>
-  <script src="./js/app.js?v=20261031n"></script>
+  <script src="./js/deps.js?v=20261031o"></script>
+  <script src="./js/model.js?v=20261031o"></script>
+  <script src="./js/themes.js?v=20261031o"></script>
+  <script src="./js/ai.js?v=20261031o"></script>
+  <script src="./js/renderers.js?v=20261031o"></script>
+  <script src="./js/preview.js?v=20261031o"></script>
+  <script src="./js/app.js?v=20261031o"></script>
 </body>
 </html>
