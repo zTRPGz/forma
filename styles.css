@@ -1123,6 +1123,11 @@ body::before {
 .cta:focus-visible,
 .download:focus-visible,
 .retry:focus-visible,
+.edit-open:focus-visible,
+.editor-add:focus-visible,
+.editor-apply:focus-visible,
+.editor-remove:focus-visible,
+.photo-remove:focus-visible,
 textarea:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
@@ -1650,6 +1655,401 @@ textarea:focus {
 
 .result-note[hidden] {
   display: none;
+}
+
+/* ---------- редактор ---------- */
+
+.edit-open {
+  color: var(--accent);
+  background: rgba(194, 65, 12, 0.06);
+  border-color: rgba(194, 65, 12, 0.35);
+}
+
+.edit-open:hover {
+  color: var(--accent-dark);
+  background: rgba(194, 65, 12, 0.1);
+  border-color: var(--accent);
+}
+
+.edit-open[hidden] {
+  display: none;
+}
+
+.editor {
+  margin-top: 20px;
+  padding: 22px;
+  background: linear-gradient(180deg, #fbf7f0, #f6efe5);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  animation: editor-in 0.3s var(--ease) both;
+}
+
+.editor[hidden] {
+  display: none;
+}
+
+@keyframes editor-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.editor-head {
+  margin-bottom: 16px;
+}
+
+.editor-kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.editor-kicker::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.editor-title {
+  margin: 0 0 6px;
+  font-family: var(--serif);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.editor-lead {
+  max-width: 64ch;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.editor-fields,
+.editor-grid-2 {
+  display: grid;
+  gap: 12px;
+}
+
+.editor-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+.editor-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.editor-field {
+  display: grid;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.editor-field > span {
+  overflow-wrap: anywhere;
+}
+
+.editor-field input {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: var(--sans);
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.editor-field input:hover {
+  border-color: var(--rule-strong);
+}
+
+.editor-field input:focus {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(16, 29, 47, 0.08);
+}
+
+.editor textarea {
+  min-height: 78px;
+  padding: 9px 11px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  background: #fdfaf5;
+  border-radius: 9px;
+}
+
+.editor-sections {
+  display: grid;
+  gap: 12px;
+}
+
+.editor-section {
+  padding: 14px;
+  background: #fff;
+  border: 1px solid var(--rule-soft);
+  border-radius: 12px;
+}
+
+.editor-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.editor-section-title {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.editor-remove {
+  padding: 4px 8px;
+  font: inherit;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+
+.editor-remove:hover {
+  color: #9b2c1f;
+  border-color: rgba(155, 44, 31, 0.3);
+}
+
+.editor-remove:disabled,
+.editor-add:disabled {
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.editor-section-note {
+  margin: 10px 0 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.editor-add {
+  margin-top: 12px;
+  padding: 9px 14px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px dashed var(--rule-strong);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+
+.editor-add:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.photo-editor {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--rule);
+}
+
+.photo-editor[hidden] {
+  display: none;
+}
+
+.photo-title {
+  margin: 0 0 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.photo-lead {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.photo-frame {
+  display: grid;
+  width: 120px;
+  aspect-ratio: 3 / 4;
+  place-items: center;
+  overflow: hidden;
+  background: var(--alt);
+  border: 1px dashed var(--rule-strong);
+  border-radius: 10px;
+}
+
+.photo-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-frame img[hidden] {
+  display: none;
+}
+
+.editor-section .editor-field + .editor-grid-2 {
+  margin-top: 10px;
+}
+
+.photo-empty {
+  padding: 8px;
+  font-size: 10px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.photo-controls {
+  display: grid;
+  gap: 9px;
+}
+
+.photo-input {
+  max-width: 100%;
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.photo-input::file-selector-button {
+  padding: 8px 12px;
+  margin-right: 10px;
+  font: inherit;
+  font-family: var(--sans);
+  color: var(--ink);
+  background: #fff;
+  border: 1px dashed var(--rule-strong);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+
+.photo-input::file-selector-button:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.photo-note {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.photo-note.is-error {
+  color: #9b2c1f;
+}
+
+.photo-row {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) 48px;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.photo-row input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.photo-row output {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-align: right;
+}
+
+.photo-remove {
+  justify-self: start;
+  margin-top: 2px;
+}
+
+.editor-status {
+  min-height: 17px;
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.editor-status.is-error {
+  color: #9b2c1f;
+}
+
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule-soft);
+}
+
+.editor-apply {
+  padding: 10px 16px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.editor-apply:hover {
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+}
+
+.editor-apply:disabled,
+.editor-actions .retry:disabled {
+  pointer-events: none;
+  opacity: 0.55;
 }
 
 .result-actions {
@@ -2233,6 +2633,19 @@ textarea:focus {
   font-size: 0.885cqw;
 }
 
+.slide-photo--filled {
+  overflow: hidden;
+  background: #fff;
+  border: 0;
+}
+
+.slide-photo--filled img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .slide-p {
   margin: 0 0 0.62em;
   line-height: 1.16;
@@ -2695,6 +3108,38 @@ textarea:focus {
   .preview-caption {
     padding: 10px 13px;
     letter-spacing: 0.06em;
+  }
+
+  .editor {
+    padding: 16px;
+  }
+
+  .editor-fields,
+  .editor-grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .photo-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .photo-frame {
+    width: 96px;
+  }
+
+  .photo-row {
+    grid-template-columns: 92px minmax(0, 1fr) 44px;
+    gap: 8px;
+  }
+
+  .editor-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .editor-actions .retry,
+  .editor-apply {
+    width: 100%;
   }
 
   .doc-preview,

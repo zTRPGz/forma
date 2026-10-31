@@ -16,7 +16,7 @@
   <title>Тезис — документы и презентации из одной фразы</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23101d2f'/%3E%3Cpath d='M18 19h28v7H36v20h-8V26H18z' fill='%23f3ede4'/%3E%3Ccircle cx='47' cy='47' r='4' fill='%23c2410c'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://forma-docs.duckdns.org" crossorigin>
-  <link rel="stylesheet" href="./styles.css?v=20261031m">
+  <link rel="stylesheet" href="./styles.css?v=20261031n">
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -237,6 +237,7 @@
             <p id="result-note" class="result-note" hidden></p>
           </div>
           <div class="result-actions">
+            <button type="button" id="edit-open" class="retry edit-open" aria-controls="editor" aria-expanded="false">Редактировать</button>
             <button type="button" id="retry" class="retry" hidden>Попробовать снова</button>
             <a id="download" class="download">
               <span class="download-icon" aria-hidden="true">↓</span>
@@ -244,6 +245,64 @@
             </a>
           </div>
         </div>
+        <section id="editor" class="editor" aria-labelledby="editor-title" hidden>
+          <div class="editor-head">
+            <p class="editor-kicker">Редактор</p>
+            <h3 class="editor-title" id="editor-title">Правки документа</h3>
+            <p class="editor-lead">Измените заголовки и текст. В презентации можно добавить фотографию. Файл пересоберётся после нажатия «Применить».</p>
+          </div>
+
+          <div class="editor-fields">
+            <label class="editor-field">
+              <span>Заголовок</span>
+              <input id="edit-title" type="text" maxlength="120" autocomplete="off">
+            </label>
+            <label class="editor-field">
+              <span>Подзаголовок</span>
+              <input id="edit-subtitle" type="text" maxlength="120" autocomplete="off">
+            </label>
+          </div>
+
+          <div class="editor-sections" id="edit-sections"></div>
+          <button type="button" id="edit-add" class="editor-add">+ Добавить раздел</button>
+
+          <div class="photo-editor" id="photo-editor" hidden>
+            <p class="photo-title">Фотография на слайдах</p>
+            <p class="photo-lead">Одна фотография для всех содержательных слайдов. Масштаб и положение можно поправить.</p>
+            <div class="photo-grid">
+              <div class="photo-frame">
+                <span id="photo-empty" class="photo-empty">Нет фото</span>
+                <img id="photo-preview" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Фотография для слайдов" hidden>
+              </div>
+              <div class="photo-controls">
+                <input type="file" id="photo-file" class="photo-input" accept="image/jpeg,image/png,image/webp" aria-label="Файл фотографии">
+                <p id="photo-note" class="photo-note">JPEG, PNG или WebP до 16 МБ.</p>
+                <div class="photo-row">
+                  <label for="photo-zoom">Масштаб</label>
+                  <input type="range" id="photo-zoom" min="100" max="220" step="1" value="100" disabled>
+                  <output id="photo-zoom-value" for="photo-zoom">100 %</output>
+                </div>
+                <div class="photo-row">
+                  <label for="photo-x">По горизонтали</label>
+                  <input type="range" id="photo-x" min="0" max="100" step="1" value="50" disabled>
+                  <output id="photo-x-value" for="photo-x">50 %</output>
+                </div>
+                <div class="photo-row">
+                  <label for="photo-y">По вертикали</label>
+                  <input type="range" id="photo-y" min="0" max="100" step="1" value="50" disabled>
+                  <output id="photo-y-value" for="photo-y">50 %</output>
+                </div>
+                <button type="button" id="photo-remove" class="retry photo-remove" hidden>Убрать фотографию</button>
+              </div>
+            </div>
+          </div>
+
+          <p id="editor-status" class="editor-status" role="status" aria-live="polite"></p>
+          <div class="editor-actions">
+            <button type="button" id="edit-apply" class="editor-apply">Применить и обновить файл</button>
+            <button type="button" id="edit-cancel" class="retry">Закрыть без изменений</button>
+          </div>
+        </section>
         <div class="result-body">
           <aside class="outline">
             <p class="outline-title">Структура<span id="outline-count" class="outline-count"></span></p>
@@ -302,12 +361,12 @@
     </footer>
   </div>
 
-  <script src="./js/deps.js?v=20261031m"></script>
-  <script src="./js/model.js?v=20261031m"></script>
-  <script src="./js/themes.js?v=20261031m"></script>
-  <script src="./js/ai.js?v=20261031m"></script>
-  <script src="./js/renderers.js?v=20261031m"></script>
-  <script src="./js/preview.js?v=20261031m"></script>
-  <script src="./js/app.js?v=20261031m"></script>
+  <script src="./js/deps.js?v=20261031n"></script>
+  <script src="./js/model.js?v=20261031n"></script>
+  <script src="./js/themes.js?v=20261031n"></script>
+  <script src="./js/ai.js?v=20261031n"></script>
+  <script src="./js/renderers.js?v=20261031n"></script>
+  <script src="./js/preview.js?v=20261031n"></script>
+  <script src="./js/app.js?v=20261031n"></script>
 </body>
 </html>

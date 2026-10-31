@@ -488,11 +488,15 @@
     }, T);
   }
 
-  function pptxPhoto(slide, RECT, T) {
+  function pptxPhoto(slide, RECT, T, photo) {
     const w = 3.45;
     const h = 4.6;
     const x = PPT_W - PPT_M - w;
     const y = 1.98;
+    if (photo && photo.data) {
+      slide.addImage({ data: photo.data, x: x, y: y, w: w, h: h });
+      return;
+    }
     slide.addShape(RECT, {
       x: x,
       y: y,
@@ -515,7 +519,7 @@
     }, T);
   }
 
-  function pptxContentSlide(pptx, RECT, section, page, T) {
+  function pptxContentSlide(pptx, RECT, section, page, T, photo) {
     const slide = pptx.addSlide();
     pptxHeading(slide, RECT, section.heading, T);
 
@@ -582,7 +586,7 @@
       breakLine: false,
     });
 
-    pptxPhoto(slide, RECT, T);
+    pptxPhoto(slide, RECT, T, photo);
     pptxFooter(slide, RECT, page, T);
   }
 
@@ -700,7 +704,7 @@
     let page = 2;
     doc.sections.forEach(function (section) {
       if (section.paragraphs.length || section.bullets.length) {
-        pptxContentSlide(pptx, RECT, section, page, T);
+        pptxContentSlide(pptx, RECT, section, page, T, doc.photo);
         page += 1;
       }
       if (section.table) {

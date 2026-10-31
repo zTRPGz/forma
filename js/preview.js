@@ -359,14 +359,22 @@
     return 11;
   }
 
-  function pptxPhoto() {
-    const photo = node("div", "slide-photo");
-    photo.append(node("span", "slide-photo-mark", "ФОТО"));
-    photo.append(node("span", "slide-photo-hint", "место для изображения"));
-    return photo;
+  function pptxPhoto(photo) {
+    const frame = node("div", "slide-photo");
+    if (photo && photo.data) {
+      frame.classList.add("slide-photo--filled");
+      const image = node("img");
+      image.src = photo.data;
+      image.alt = photo.name ? "Фотография: " + photo.name : "Фотография на слайде";
+      frame.append(image);
+      return frame;
+    }
+    frame.append(node("span", "slide-photo-mark", "ФОТО"));
+    frame.append(node("span", "slide-photo-hint", "место для изображения"));
+    return frame;
   }
 
-  function pptxContentSlide(section, page) {
+  function pptxContentSlide(section, page, photo) {
     const slide = node("div", "slide slide--content");
     pptxHeading(slide, section.heading);
 
@@ -393,7 +401,7 @@
     }
 
     slide.append(body);
-    slide.append(pptxPhoto());
+    slide.append(pptxPhoto(photo));
     slideFooter(page).forEach(function (element) {
       slide.append(element);
     });
@@ -472,7 +480,7 @@
     let page = 2;
     doc.sections.forEach(function (section) {
       if (section.paragraphs.length || section.bullets.length) {
-        root.append(pptxContentSlide(section, page));
+        root.append(pptxContentSlide(section, page, doc.photo));
         page += 1;
       }
       if (section.table) {
